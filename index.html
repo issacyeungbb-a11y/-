@@ -1,49 +1,386 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>星際乘數探險隊</title>
+    <title>O2O 達人店長 - 貨品陳列模擬器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap');
       body {
-        font-family: 'Nunito', 'Noto Sans TC', sans-serif;
-        background-color: #0f172a;
-        color: white;
+        font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+        background: radial-gradient(circle at top, #1f2937 0%, #0f172a 45%, #020617 100%);
       }
-      .animate-bounce-short {
-        animation: bounce-short 0.5s ease-in-out 1;
+
+      .glass {
+        background: rgba(15, 23, 42, 0.68);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        backdrop-filter: blur(8px);
       }
-      @keyframes bounce-short {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-25%); }
+
+      .typing-cursor::after {
+        content: "▋";
+        margin-left: 2px;
+        animation: blink 0.9s infinite;
       }
-      .animate-shake {
-        animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
       }
-      @keyframes shake {
-        10%, 90% { transform: translate3d(-1px, 0, 0); }
-        20%, 80% { transform: translate3d(2px, 0, 0); }
-        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-        40%, 60% { transform: translate3d(4px, 0, 0); }
+
+      .scan-flash {
+        animation: scanFlash 0.75s ease-in-out;
+      }
+
+      @keyframes scanFlash {
+        0% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+        50% { box-shadow: 0 0 28px rgba(34, 197, 94, 0.8); }
+        100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
-    "vite": "https://esm.sh/vite@^7.3.1"
-  }
-}
-</script>
-</head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+  </head>
+  <body class="min-h-screen text-slate-100">
+    <main class="mx-auto max-w-6xl px-4 py-6 md:py-8">
+      <section class="glass mb-5 rounded-2xl p-4 shadow-2xl md:p-5">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-sm text-slate-300">目前日期</p>
+            <h1 class="text-2xl font-extrabold tracking-wide text-cyan-300">2026-03-09</h1>
+          </div>
+          <div class="w-full md:max-w-xl">
+            <div class="mb-1 flex items-center justify-between text-xs text-slate-300">
+              <span>關卡進度</span>
+              <span id="stageText">第 1 / 4 關</span>
+            </div>
+            <div class="h-3 overflow-hidden rounded-full bg-slate-700/70">
+              <div id="progressBar" class="h-full w-1/4 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-5 lg:grid-cols-5">
+        <article class="glass rounded-2xl p-4 shadow-xl lg:col-span-2">
+          <div class="mb-3 flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-500/20 text-xl">🧑‍🏫</div>
+            <div>
+              <p class="text-sm text-slate-300">NPC 導師</p>
+              <h2 class="text-lg font-bold">阿明</h2>
+            </div>
+          </div>
+          <div class="rounded-xl bg-slate-900/70 p-4">
+            <p id="npcText" class="min-h-[150px] whitespace-pre-line leading-relaxed text-slate-100"></p>
+          </div>
+          <p id="hintText" class="mt-3 text-sm text-amber-300"></p>
+        </article>
+
+        <article class="glass rounded-2xl p-4 shadow-xl lg:col-span-3">
+          <h3 id="panelTitle" class="mb-4 text-xl font-bold text-cyan-200">互動操作區</h3>
+          <div id="interactionArea" class="space-y-4"></div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button id="nextBtn" class="hidden rounded-lg bg-cyan-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-cyan-400">下一步</button>
+            <button id="restartBtn" class="hidden rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-900 transition hover:bg-emerald-400">再玩一次</button>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const TODAY = new Date("2026-03-09");
+      const products = [
+        { id: 1, name: "粟米罐頭", category: "罐頭食品", isDamaged: false },
+        { id: 2, name: "紅腰豆罐頭 (嚴重凹陷)", category: "罐頭食品", isDamaged: true, errorReason: "變形" },
+        { id: 3, name: "抹茶味飲料", category: "飲品類", isDamaged: false },
+        { id: 4, name: "牛奶 (包裝破損漏液)", category: "飲品類", isDamaged: true, errorReason: "包裝損壞" },
+        { id: 5, name: "泰國船麵", category: "乾貨", isDamaged: false },
+        { id: 6, name: "蘋果 (發霉變色)", category: "生鮮冷藏", isDamaged: true, errorReason: "不整潔/腐爛" }
+      ];
+
+      const state = {
+        stage: 1,
+        score: 100,
+        selectedProducts: [],
+        damagedProduct: null,
+        checkedProduct: null,
+        mfgDate: null,
+        expDate: null,
+        isExpired: null
+      };
+
+      const el = {
+        stageText: document.getElementById("stageText"),
+        progressBar: document.getElementById("progressBar"),
+        npcText: document.getElementById("npcText"),
+        hintText: document.getElementById("hintText"),
+        panelTitle: document.getElementById("panelTitle"),
+        interactionArea: document.getElementById("interactionArea"),
+        nextBtn: document.getElementById("nextBtn"),
+        restartBtn: document.getElementById("restartBtn")
+      };
+
+      const categoryStyles = {
+        罐頭食品: "bg-sky-500/20 border-sky-300/50",
+        飲品類: "bg-fuchsia-500/20 border-fuchsia-300/50",
+        乾貨: "bg-amber-500/20 border-amber-300/50",
+        生鮮冷藏: "bg-emerald-500/20 border-emerald-300/50"
+      };
+
+      function shuffle(list) {
+        return [...list].sort(() => Math.random() - 0.5);
+      }
+
+      function formatDate(d) {
+        return d.toISOString().slice(0, 10);
+      }
+
+      function randomDate(start, end) {
+        const time = start.getTime() + Math.random() * (end.getTime() - start.getTime());
+        return new Date(time);
+      }
+
+      function setProgress() {
+        el.stageText.textContent = `第 ${state.stage} / 4 關`;
+        el.progressBar.style.width = `${(state.stage / 4) * 100}%`;
+      }
+
+      function typeNpcText(text) {
+        el.npcText.textContent = "";
+        el.npcText.classList.add("typing-cursor");
+        let i = 0;
+        const timer = setInterval(() => {
+          el.npcText.textContent += text[i] || "";
+          i += 1;
+          if (i > text.length) {
+            clearInterval(timer);
+            el.npcText.classList.remove("typing-cursor");
+          }
+        }, 22);
+      }
+
+      function chooseThreeProducts() {
+        const damaged = shuffle(products.filter((p) => p.isDamaged))[0];
+        const normalPool = shuffle(products.filter((p) => !p.isDamaged)).slice(0, 2);
+        const selected = shuffle([damaged, ...normalPool]);
+        state.selectedProducts = selected;
+        state.damagedProduct = damaged;
+      }
+
+      function setupStage1() {
+        setProgress();
+        el.panelTitle.textContent = "State 1：POS 系統登錄";
+        el.hintText.textContent = "";
+        el.nextBtn.classList.add("hidden");
+        el.restartBtn.classList.add("hidden");
+
+        chooseThreeProducts();
+        typeNpcText("早晨！今天有 3 件新貨到，請先用 POS 系統登錄它們！");
+
+        el.interactionArea.innerHTML = "";
+        const list = document.createElement("div");
+        list.className = "grid gap-3 md:grid-cols-3";
+
+        state.selectedProducts.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = `rounded-xl border p-3 ${categoryStyles[item.category] || "bg-slate-700/40 border-slate-500"}`;
+          card.innerHTML = `<p class="text-sm text-slate-300">${item.category}</p><p class="mt-1 font-semibold">${item.name}</p>`;
+          list.appendChild(card);
+        });
+
+        const scanBtn = document.createElement("button");
+        scanBtn.className = "rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900 hover:bg-emerald-400";
+        scanBtn.textContent = "掃描條碼";
+        scanBtn.onclick = () => {
+          list.classList.add("scan-flash");
+          el.hintText.textContent = "✅ 掃描成功！POS 登錄完成。";
+          el.nextBtn.classList.remove("hidden");
+          scanBtn.disabled = true;
+          scanBtn.classList.add("opacity-60", "cursor-not-allowed");
+        };
+
+        el.interactionArea.append(list, scanBtn);
+      }
+
+      function setupStage2() {
+        state.stage = 2;
+        setProgress();
+        el.panelTitle.textContent = "State 2：外觀大檢查";
+        el.nextBtn.classList.add("hidden");
+        typeNpcText("登錄完畢！現在請仔細檢查這 3 件商品，挑出『外觀有問題、不能上架』的不良品並點擊它報廢。");
+        el.interactionArea.innerHTML = "";
+        el.hintText.textContent = "點錯會扣 5 分，當前分數：" + state.score;
+
+        const wrap = document.createElement("div");
+        wrap.className = "grid gap-3 md:grid-cols-3";
+
+        state.selectedProducts.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.className = "rounded-xl border border-slate-500 bg-slate-800/70 p-3 text-left transition hover:border-cyan-300 hover:bg-slate-700";
+          btn.innerHTML = `<p class="text-sm text-slate-300">${item.category}</p><p class="font-semibold">${item.name}</p>`;
+          btn.onclick = () => {
+            if (item.isDamaged) {
+              el.hintText.textContent = `🎯 答對了！「${item.errorReason}」的商品不能上架。分數：${state.score}`;
+              Array.from(wrap.children).forEach((child) => (child.disabled = true));
+              el.nextBtn.classList.remove("hidden");
+            } else {
+              state.score = Math.max(0, state.score - 5);
+              el.hintText.textContent = `再檢查一下，這件外觀沒問題喔。分數：${state.score}`;
+            }
+          };
+          wrap.appendChild(btn);
+        });
+
+        el.interactionArea.appendChild(wrap);
+      }
+
+      function renderTimeline(mfg, today, exp) {
+        const labels = [
+          { name: "製造日期", date: mfg, color: "bg-cyan-400" },
+          { name: "今日日期", date: today, color: "bg-amber-400" },
+          { name: "有效日期", date: exp, color: "bg-emerald-400" }
+        ].sort((a, b) => a.date - b.date);
+
+        const map = {
+          製造日期: mfg,
+          今日日期: today,
+          有效日期: exp
+        };
+
+        return `
+          <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
+            <div class="relative mt-5 h-1 rounded bg-slate-600">
+              ${labels.map((label, idx) => {
+                const left = (idx / (labels.length - 1)) * 100;
+                return `
+                  <div class="absolute -top-4" style="left:${left}%; transform: translateX(-50%);">
+                    <div class="h-3 w-3 rounded-full ${label.color}"></div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+            <div class="mt-6 grid gap-2 md:grid-cols-3 text-sm">
+              <div class="rounded-lg bg-slate-800 p-2"><b>製造日期</b><br>${formatDate(map["製造日期"])}</div>
+              <div class="rounded-lg bg-slate-800 p-2"><b>今日日期</b><br>${formatDate(map["今日日期"])}</div>
+              <div class="rounded-lg bg-slate-800 p-2"><b>有效日期</b><br>${formatDate(map["有效日期"])}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function setupStage3() {
+        state.stage = 3;
+        setProgress();
+        el.panelTitle.textContent = "State 3：效期時間線";
+        el.nextBtn.classList.add("hidden");
+        typeNpcText("外觀沒問題，接下來檢查有效日期。請對比時間線，判斷這件商品是否過期？");
+
+        const validItems = state.selectedProducts.filter((p) => !p.isDamaged);
+        state.checkedProduct = shuffle(validItems)[0];
+        state.mfgDate = randomDate(new Date("2025-08-01"), new Date("2025-12-15"));
+        const expired = Math.random() > 0.5;
+        state.expDate = expired
+          ? randomDate(new Date("2025-12-01"), new Date("2026-02-28"))
+          : randomDate(new Date("2026-03-10"), new Date("2026-12-31"));
+        state.isExpired = state.expDate < TODAY;
+
+        el.interactionArea.innerHTML = `
+          <div class="rounded-xl border border-cyan-400/40 bg-cyan-500/10 p-3">
+            檢查商品：<span class="font-semibold text-cyan-200">${state.checkedProduct.name}</span>
+          </div>
+          ${renderTimeline(state.mfgDate, TODAY, state.expDate)}
+          <div class="flex flex-wrap gap-3">
+            <button id="expiredBtn" class="rounded-lg bg-rose-500 px-4 py-2 font-bold text-white hover:bg-rose-400">已過期，報廢</button>
+            <button id="freshBtn" class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900 hover:bg-emerald-400">未過期，準備上架</button>
+          </div>
+        `;
+
+        el.hintText.textContent = "提示：比較今日日期與有效日期先後。";
+
+        document.getElementById("expiredBtn").onclick = () => handleTimelineAnswer(true);
+        document.getElementById("freshBtn").onclick = () => handleTimelineAnswer(false);
+      }
+
+      function handleTimelineAnswer(answerExpired) {
+        if (answerExpired === state.isExpired) {
+          el.hintText.textContent = "✅ 判斷正確！";
+          el.nextBtn.classList.remove("hidden");
+        } else {
+          el.hintText.textContent = "❗再看一次時間線：若今日日期晚於有效日期，代表已過期。";
+        }
+      }
+
+      function setupStage4() {
+        state.stage = 4;
+        setProgress();
+        el.panelTitle.textContent = "State 4：上架排序（FIFO）";
+        el.nextBtn.classList.add("hidden");
+        typeNpcText("最後一步：排序貨品！請依照『先進先出』原則，決定新舊貨的排列順序。");
+
+        el.interactionArea.innerHTML = `
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
+              <h4 class="mb-2 font-bold">貨架位置（前）</h4>
+              <div id="frontSlot" class="rounded-lg border border-dashed border-slate-500 p-4 text-slate-300">等待排列</div>
+            </div>
+            <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
+              <h4 class="mb-2 font-bold">貨架位置（後）</h4>
+              <div id="backSlot" class="rounded-lg border border-dashed border-slate-500 p-4 text-slate-300">等待排列</div>
+            </div>
+          </div>
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-xl border border-amber-300/50 bg-amber-500/10 p-3">舊貨（有效日期：2026-05-01）</div>
+            <div class="rounded-xl border border-cyan-300/50 bg-cyan-500/10 p-3">新貨（有效日期：2026-12-01）</div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <button id="oldFront" class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900 hover:bg-emerald-400">把舊貨放前面</button>
+            <button id="newFront" class="rounded-lg bg-fuchsia-500 px-4 py-2 font-bold text-white hover:bg-fuchsia-400">把新貨放前面</button>
+          </div>
+        `;
+
+        const frontSlot = document.getElementById("frontSlot");
+        const backSlot = document.getElementById("backSlot");
+
+        document.getElementById("oldFront").onclick = () => {
+          frontSlot.textContent = "舊貨（2026-05-01）";
+          backSlot.textContent = "新貨（2026-12-01）";
+          el.hintText.textContent = "🏆 完美！先進先出完成，恭喜完成陳列貨品訓練！";
+          el.restartBtn.classList.remove("hidden");
+        };
+
+        document.getElementById("newFront").onclick = () => {
+          frontSlot.textContent = "新貨（2026-12-01）";
+          backSlot.textContent = "舊貨（2026-05-01）";
+          el.hintText.textContent = "這樣會違反 FIFO，再試一次：有效日期較早的要放前面。";
+        };
+      }
+
+      function nextStage() {
+        if (state.stage === 1) return setupStage2();
+        if (state.stage === 2) return setupStage3();
+        if (state.stage === 3) return setupStage4();
+      }
+
+      function resetGame() {
+        state.stage = 1;
+        state.score = 100;
+        state.selectedProducts = [];
+        state.damagedProduct = null;
+        state.checkedProduct = null;
+        state.mfgDate = null;
+        state.expDate = null;
+        state.isExpired = null;
+        setupStage1();
+      }
+
+      el.nextBtn.addEventListener("click", nextStage);
+      el.restartBtn.addEventListener("click", resetGame);
+
+      setupStage1();
+    </script>
   </body>
 </html>
