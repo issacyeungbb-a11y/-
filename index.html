@@ -8,13 +8,13 @@
     <style>
       body {
         font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-        background: radial-gradient(circle at top, #1f2937 0%, #0f172a 45%, #020617 100%);
+        background: radial-gradient(circle at 20% 0%, #1d4ed8 0%, #0f172a 42%, #020617 100%);
       }
 
       .glass {
-        background: rgba(15, 23, 42, 0.68);
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        backdrop-filter: blur(8px);
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        backdrop-filter: blur(10px);
       }
 
       .typing-cursor::after {
@@ -34,33 +34,67 @@
         }
       }
 
-      .scan-flash {
-        animation: scanFlash 0.75s ease-in-out;
+      .pulse-ok {
+        animation: pulseOk 0.75s ease;
       }
 
-      @keyframes scanFlash {
-        0% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
-        50% { box-shadow: 0 0 28px rgba(34, 197, 94, 0.8); }
-        100% { box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+      @keyframes pulseOk {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+        }
+        50% {
+          box-shadow: 0 0 26px rgba(16, 185, 129, 0.85);
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+        }
+      }
+
+      .soft-warn {
+        animation: softWarn 0.6s ease;
+      }
+
+      @keyframes softWarn {
+        0% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-4px);
+        }
+        50% {
+          transform: translateX(4px);
+        }
+        75% {
+          transform: translateX(-3px);
+        }
+        100% {
+          transform: translateX(0);
+        }
       }
     </style>
   </head>
   <body class="min-h-screen text-slate-100">
-    <main class="mx-auto max-w-6xl px-4 py-6 md:py-8">
+    <main class="mx-auto max-w-7xl px-4 py-6 md:py-8">
       <section class="glass mb-5 rounded-2xl p-4 shadow-2xl md:p-5">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p class="text-sm text-slate-300">目前日期</p>
+            <p class="text-sm text-cyan-100/80">目前日期</p>
             <h1 class="text-2xl font-extrabold tracking-wide text-cyan-300">2026-03-09</h1>
           </div>
           <div class="w-full md:max-w-xl">
-            <div class="mb-1 flex items-center justify-between text-xs text-slate-300">
-              <span>關卡進度</span>
+            <div class="mb-1 flex items-center justify-between text-xs text-slate-200">
+              <span>關卡進度（共 4 關）</span>
               <span id="stageText">第 1 / 4 關</span>
             </div>
             <div class="h-3 overflow-hidden rounded-full bg-slate-700/70">
-              <div id="progressBar" class="h-full w-1/4 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-500"></div>
+              <div
+                id="progressBar"
+                class="h-full w-1/4 rounded-full bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 transition-all duration-500"
+              ></div>
             </div>
+          </div>
+          <div class="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm">
+            分數：<span id="scoreText" class="font-bold text-emerald-300">100</span>
           </div>
         </div>
       </section>
@@ -74,10 +108,10 @@
               <h2 class="text-lg font-bold">阿明</h2>
             </div>
           </div>
-          <div class="rounded-xl bg-slate-900/70 p-4">
+          <div class="rounded-xl bg-slate-950/70 p-4">
             <p id="npcText" class="min-h-[150px] whitespace-pre-line leading-relaxed text-slate-100"></p>
           </div>
-          <p id="hintText" class="mt-3 text-sm text-amber-300"></p>
+          <p id="hintText" class="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-200"></p>
         </article>
 
         <article class="glass rounded-2xl p-4 shadow-xl lg:col-span-3">
@@ -93,19 +127,30 @@
 
     <script>
       const TODAY = new Date("2026-03-09");
+
+      // 三個類別，每類至少三個貨品（共 9 件）
       const products = [
-        { id: 1, name: "粟米罐頭", category: "罐頭食品", isDamaged: false },
-        { id: 2, name: "紅腰豆罐頭 (嚴重凹陷)", category: "罐頭食品", isDamaged: true, errorReason: "變形" },
-        { id: 3, name: "抹茶味飲料", category: "飲品類", isDamaged: false },
-        { id: 4, name: "牛奶 (包裝破損漏液)", category: "飲品類", isDamaged: true, errorReason: "包裝損壞" },
-        { id: 5, name: "泰國船麵", category: "乾貨", isDamaged: false },
-        { id: 6, name: "蘋果 (發霉變色)", category: "生鮮冷藏", isDamaged: true, errorReason: "不整潔/腐爛" }
+        { id: 1, name: "粟米罐頭", category: "罐頭食品", expiry: "2026-08-15", isDamaged: false, defectText: "外觀正常", image: "🥫" },
+        { id: 2, name: "紅腰豆罐頭", category: "罐頭食品", expiry: "2026-07-01", isDamaged: true, defectText: "嚴重凹陷", image: "🥫" },
+        { id: 3, name: "番茄罐頭", category: "罐頭食品", expiry: "2026-09-10", isDamaged: false, defectText: "外觀正常", image: "🥫" },
+
+        { id: 4, name: "抹茶味飲料", category: "飲品類", expiry: "2026-06-30", isDamaged: false, defectText: "外觀正常", image: "🧃" },
+        { id: 5, name: "牛奶", category: "飲品類", expiry: "2026-03-20", isDamaged: true, defectText: "包裝破損漏液", image: "🥛" },
+        { id: 6, name: "咖啡", category: "飲品類", expiry: "2026-11-18", isDamaged: false, defectText: "外觀正常", image: "☕" },
+
+        { id: 7, name: "泰國船麵", category: "乾貨", expiry: "2026-10-20", isDamaged: false, defectText: "外觀正常", image: "🍜" },
+        { id: 8, name: "餅乾", category: "乾貨", expiry: "2026-05-05", isDamaged: false, defectText: "外觀正常", image: "🍪" },
+        { id: 9, name: "即食麵", category: "乾貨", expiry: "2026-04-02", isDamaged: true, defectText: "包裝破洞", image: "📦" }
       ];
+
+      const categoryList = ["罐頭食品", "飲品類", "乾貨"];
 
       const state = {
         stage: 1,
         score: 100,
         selectedProducts: [],
+        scannedIds: new Set(),
+        classifyMap: {},
         damagedProduct: null,
         checkedProduct: null,
         mfgDate: null,
@@ -116,6 +161,7 @@
       const el = {
         stageText: document.getElementById("stageText"),
         progressBar: document.getElementById("progressBar"),
+        scoreText: document.getElementById("scoreText"),
         npcText: document.getElementById("npcText"),
         hintText: document.getElementById("hintText"),
         panelTitle: document.getElementById("panelTitle"),
@@ -125,10 +171,21 @@
       };
 
       const categoryStyles = {
-        罐頭食品: "bg-sky-500/20 border-sky-300/50",
-        飲品類: "bg-fuchsia-500/20 border-fuchsia-300/50",
-        乾貨: "bg-amber-500/20 border-amber-300/50",
-        生鮮冷藏: "bg-emerald-500/20 border-emerald-300/50"
+        罐頭食品: "border-sky-300/60 bg-sky-500/10",
+        飲品類: "border-fuchsia-300/60 bg-fuchsia-500/10",
+        乾貨: "border-amber-300/60 bg-amber-500/10"
+      };
+
+      const barcodeById = {
+        1: "|| ||| | |||| | |",
+        2: "| || |||| | | |||",
+        3: "||| | || | |||| |",
+        4: "|| || ||| || | ||",
+        5: "| ||| | || |||| |",
+        6: "||| || | | ||| ||",
+        7: "|| | |||| || | |",
+        8: "| || ||| | || |||",
+        9: "||| | |||| | || |"
       };
 
       function shuffle(list) {
@@ -140,13 +197,18 @@
       }
 
       function randomDate(start, end) {
-        const time = start.getTime() + Math.random() * (end.getTime() - start.getTime());
-        return new Date(time);
+        const t = start.getTime() + Math.random() * (end.getTime() - start.getTime());
+        return new Date(t);
       }
 
       function setProgress() {
         el.stageText.textContent = `第 ${state.stage} / 4 關`;
         el.progressBar.style.width = `${(state.stage / 4) * 100}%`;
+      }
+
+      function updateScore(nextScore) {
+        state.score = Math.max(0, nextScore);
+        el.scoreText.textContent = state.score;
       }
 
       function typeNpcText(text) {
@@ -160,113 +222,192 @@
             clearInterval(timer);
             el.npcText.classList.remove("typing-cursor");
           }
-        }, 22);
+        }, 20);
       }
 
       function chooseThreeProducts() {
         const damaged = shuffle(products.filter((p) => p.isDamaged))[0];
         const normalPool = shuffle(products.filter((p) => !p.isDamaged)).slice(0, 2);
-        const selected = shuffle([damaged, ...normalPool]);
-        state.selectedProducts = selected;
+        state.selectedProducts = shuffle([damaged, ...normalPool]);
         state.damagedProduct = damaged;
       }
 
+      function productCard(item, options = {}) {
+        const scanned = options.scanned || false;
+        return `
+          <div class="rounded-xl border p-3 ${categoryStyles[item.category]} ${scanned ? "pulse-ok" : ""}">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="rounded bg-slate-900/70 px-2 py-1 text-xs">${item.category}</span>
+              <span class="text-2xl">${item.image}</span>
+            </div>
+            <div class="rounded-lg bg-slate-950/60 p-3">
+              <p class="font-bold text-cyan-100">${item.name}</p>
+              <p class="mt-1 text-xs text-slate-200">有效日期：<span class="font-semibold">${item.expiry}</span></p>
+              <p class="mt-1 text-xs ${item.isDamaged ? "text-rose-300" : "text-emerald-300"}">
+                缺損狀態：${item.isDamaged ? "⚠️ 有缺損（" + item.defectText + "）" : "✅ 無缺損"}
+              </p>
+            </div>
+            <button
+              data-scan-id="${item.id}"
+              class="scan-btn mt-3 w-full rounded-lg border border-cyan-300/50 bg-cyan-500/20 px-3 py-2 text-sm font-semibold hover:bg-cyan-500/35"
+            >
+              點擊條碼掃描
+              <div class="mt-1 select-none rounded bg-white px-2 py-1 font-mono text-xs tracking-widest text-slate-900">${barcodeById[item.id]}</div>
+            </button>
+          </div>
+        `;
+      }
+
       function setupStage1() {
+        state.stage = 1;
         setProgress();
-        el.panelTitle.textContent = "State 1：POS 系統登錄";
-        el.hintText.textContent = "";
+        el.panelTitle.textContent = "State 1：POS 系統登錄（點擊條碼）";
         el.nextBtn.classList.add("hidden");
         el.restartBtn.classList.add("hidden");
-
+        state.scannedIds = new Set();
         chooseThreeProducts();
-        typeNpcText("早晨！今天有 3 件新貨到，請先用 POS 系統登錄它們！");
 
-        el.interactionArea.innerHTML = "";
-        const list = document.createElement("div");
-        list.className = "grid gap-3 md:grid-cols-3";
+        typeNpcText("早晨！今天有 3 件新貨到。請逐件點擊「條碼」完成 POS 掃描登錄。每掃到一件，卡片會亮起提示。✨");
+        el.hintText.textContent = "視覺提示：未掃描是藍色條碼按鈕；掃描完成會變綠色『已掃描』。";
 
-        state.selectedProducts.forEach((item) => {
-          const card = document.createElement("div");
-          card.className = `rounded-xl border p-3 ${categoryStyles[item.category] || "bg-slate-700/40 border-slate-500"}`;
-          card.innerHTML = `<p class="text-sm text-slate-300">${item.category}</p><p class="mt-1 font-semibold">${item.name}</p>`;
-          list.appendChild(card);
+        el.interactionArea.innerHTML = `
+          <div class="grid gap-3 md:grid-cols-3">
+            ${state.selectedProducts.map((p) => `<div id="card-${p.id}">${productCard(p)}</div>`).join("")}
+          </div>
+          <div id="scanProgress" class="rounded-lg border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            已掃描 0 / ${state.selectedProducts.length}
+          </div>
+        `;
+
+        document.querySelectorAll(".scan-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = Number(btn.dataset.scanId);
+            if (state.scannedIds.has(id)) return;
+            state.scannedIds.add(id);
+            btn.classList.remove("bg-cyan-500/20");
+            btn.classList.add("bg-emerald-500/30", "border-emerald-300/60");
+            btn.innerHTML = '✅ 已掃描<div class="mt-1 rounded bg-white px-2 py-1 font-mono text-xs tracking-widest text-slate-900">' + barcodeById[id] + "</div>";
+            document.getElementById(`card-${id}`).classList.add("pulse-ok");
+
+            document.getElementById("scanProgress").textContent = `已掃描 ${state.scannedIds.size} / ${state.selectedProducts.length}`;
+            if (state.scannedIds.size === state.selectedProducts.length) {
+              el.hintText.textContent = "✅ 全部掃描完成！可以進入下一步分類。";
+              el.nextBtn.classList.remove("hidden");
+            }
+          });
         });
-
-        const scanBtn = document.createElement("button");
-        scanBtn.className = "rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900 hover:bg-emerald-400";
-        scanBtn.textContent = "掃描條碼";
-        scanBtn.onclick = () => {
-          list.classList.add("scan-flash");
-          el.hintText.textContent = "✅ 掃描成功！POS 登錄完成。";
-          el.nextBtn.classList.remove("hidden");
-          scanBtn.disabled = true;
-          scanBtn.classList.add("opacity-60", "cursor-not-allowed");
-        };
-
-        el.interactionArea.append(list, scanBtn);
       }
 
       function setupStage2() {
         state.stage = 2;
         setProgress();
-        el.panelTitle.textContent = "State 2：外觀大檢查";
+        el.panelTitle.textContent = "State 2：貨品分類";
         el.nextBtn.classList.add("hidden");
-        typeNpcText("登錄完畢！現在請仔細檢查這 3 件商品，挑出『外觀有問題、不能上架』的不良品並點擊它報廢。");
-        el.interactionArea.innerHTML = "";
-        el.hintText.textContent = "點錯會扣 5 分，當前分數：" + state.score;
+        state.classifyMap = {};
 
-        const wrap = document.createElement("div");
-        wrap.className = "grid gap-3 md:grid-cols-3";
+        typeNpcText("做得好！第二步請把這 3 件貨品分類到正確類別。每件都要選一次，全部正確先可過關。📚");
+        el.hintText.textContent = "視覺提示：選錯會紅色警示，選對會綠色提示。";
 
-        state.selectedProducts.forEach((item) => {
-          const btn = document.createElement("button");
-          btn.className = "rounded-xl border border-slate-500 bg-slate-800/70 p-3 text-left transition hover:border-cyan-300 hover:bg-slate-700";
-          btn.innerHTML = `<p class="text-sm text-slate-300">${item.category}</p><p class="font-semibold">${item.name}</p>`;
-          btn.onclick = () => {
-            if (item.isDamaged) {
-              el.hintText.textContent = `🎯 答對了！「${item.errorReason}」的商品不能上架。分數：${state.score}`;
-              Array.from(wrap.children).forEach((child) => (child.disabled = true));
-              el.nextBtn.classList.remove("hidden");
-            } else {
-              state.score = Math.max(0, state.score - 5);
-              el.hintText.textContent = `再檢查一下，這件外觀沒問題喔。分數：${state.score}`;
-            }
-          };
-          wrap.appendChild(btn);
+        el.interactionArea.innerHTML = `
+          <div class="grid gap-3 md:grid-cols-3">
+            ${state.selectedProducts
+              .map(
+                (item) => `
+              <div id="classify-${item.id}" class="rounded-xl border border-slate-500 bg-slate-900/70 p-3">
+                <p class="mb-2 text-lg">${item.image} ${item.name}</p>
+                <p class="mb-2 text-xs text-slate-300">請選擇類別：</p>
+                <div class="flex flex-wrap gap-2">
+                  ${categoryList
+                    .map(
+                      (cat) =>
+                        `<button data-id="${item.id}" data-cat="${cat}" class="classify-btn rounded-lg border border-slate-400/60 px-2 py-1 text-sm hover:bg-slate-700">${cat}</button>`
+                    )
+                    .join("")}
+                </div>
+                <p id="classify-hint-${item.id}" class="mt-2 text-xs"></p>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+          <button id="checkClassify" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900 hover:bg-cyan-400">提交分類結果</button>
+        `;
+
+        document.querySelectorAll(".classify-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = Number(btn.dataset.id);
+            const cat = btn.dataset.cat;
+            state.classifyMap[id] = cat;
+
+            document
+              .querySelectorAll(`.classify-btn[data-id='${id}']`)
+              .forEach((same) => same.classList.remove("bg-cyan-500/30", "border-cyan-300"));
+            btn.classList.add("bg-cyan-500/30", "border-cyan-300");
+          });
         });
 
-        el.interactionArea.appendChild(wrap);
+        document.getElementById("checkClassify").addEventListener("click", () => {
+          let allAssigned = true;
+          let allCorrect = true;
+
+          state.selectedProducts.forEach((item) => {
+            const chosen = state.classifyMap[item.id];
+            const hint = document.getElementById(`classify-hint-${item.id}`);
+            if (!chosen) {
+              allAssigned = false;
+              allCorrect = false;
+              hint.textContent = "⚠️ 尚未選擇類別";
+              hint.className = "mt-2 text-xs text-amber-300";
+              return;
+            }
+
+            if (chosen === item.category) {
+              hint.textContent = `✅ 正確：${item.category}`;
+              hint.className = "mt-2 text-xs text-emerald-300";
+            } else {
+              allCorrect = false;
+              hint.textContent = `❌ 不是 ${chosen}，再想想`;
+              hint.className = "mt-2 text-xs text-rose-300 soft-warn";
+            }
+          });
+
+          if (!allAssigned) {
+            el.hintText.textContent = "請先完成每件貨品的分類選擇。";
+            return;
+          }
+
+          if (allCorrect) {
+            el.hintText.textContent = "🎯 分類全對！進入外觀檢查。";
+            el.nextBtn.classList.remove("hidden");
+          } else {
+            updateScore(state.score - 5);
+            el.hintText.textContent = `有分類錯誤，再試一次。分數：${state.score}`;
+          }
+        });
       }
 
       function renderTimeline(mfg, today, exp) {
-        const labels = [
-          { name: "製造日期", date: mfg, color: "bg-cyan-400" },
-          { name: "今日日期", date: today, color: "bg-amber-400" },
-          { name: "有效日期", date: exp, color: "bg-emerald-400" }
+        const points = [
+          { label: "製造日期", date: mfg, color: "bg-cyan-400" },
+          { label: "今日日期", date: today, color: "bg-amber-400" },
+          { label: "有效日期", date: exp, color: "bg-emerald-400" }
         ].sort((a, b) => a.date - b.date);
 
-        const map = {
-          製造日期: mfg,
-          今日日期: today,
-          有效日期: exp
-        };
-
         return `
-          <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
-            <div class="relative mt-5 h-1 rounded bg-slate-600">
-              ${labels.map((label, idx) => {
-                const left = (idx / (labels.length - 1)) * 100;
-                return `
-                  <div class="absolute -top-4" style="left:${left}%; transform: translateX(-50%);">
-                    <div class="h-3 w-3 rounded-full ${label.color}"></div>
-                  </div>
-                `;
-              }).join("")}
+          <div class="rounded-xl border border-slate-600 bg-slate-950/70 p-4">
+            <p class="mb-2 text-sm text-cyan-200">時間線提示：由左到右是時間由早到晚</p>
+            <div class="relative mt-6 h-1 rounded bg-slate-600">
+              ${points
+                .map((p, idx) => {
+                  const left = (idx / (points.length - 1)) * 100;
+                  return `<div class="absolute -top-4" style="left:${left}%; transform:translateX(-50%)"><div class="h-3 w-3 rounded-full ${p.color}"></div></div>`;
+                })
+                .join("")}
             </div>
             <div class="mt-6 grid gap-2 md:grid-cols-3 text-sm">
-              <div class="rounded-lg bg-slate-800 p-2"><b>製造日期</b><br>${formatDate(map["製造日期"])}</div>
-              <div class="rounded-lg bg-slate-800 p-2"><b>今日日期</b><br>${formatDate(map["今日日期"])}</div>
-              <div class="rounded-lg bg-slate-800 p-2"><b>有效日期</b><br>${formatDate(map["有效日期"])}</div>
+              <div class="rounded-lg bg-slate-800 p-2"><b>製造日期</b><br>${formatDate(mfg)}</div>
+              <div class="rounded-lg bg-slate-800 p-2"><b>今日日期</b><br>${formatDate(today)}</div>
+              <div class="rounded-lg bg-slate-800 p-2"><b>有效日期</b><br>${formatDate(exp)}</div>
             </div>
           </div>
         `;
@@ -275,22 +416,36 @@
       function setupStage3() {
         state.stage = 3;
         setProgress();
-        el.panelTitle.textContent = "State 3：效期時間線";
+        el.panelTitle.textContent = "State 3：外觀 + 效期時間線";
         el.nextBtn.classList.add("hidden");
-        typeNpcText("外觀沒問題，接下來檢查有效日期。請對比時間線，判斷這件商品是否過期？");
 
         const validItems = state.selectedProducts.filter((p) => !p.isDamaged);
-        state.checkedProduct = shuffle(validItems)[0];
-        state.mfgDate = randomDate(new Date("2025-08-01"), new Date("2025-12-15"));
-        const expired = Math.random() > 0.5;
-        state.expDate = expired
+        state.checkedProduct = shuffle(validItems)[0] || state.selectedProducts[0];
+        state.mfgDate = randomDate(new Date("2025-07-01"), new Date("2025-12-01"));
+        const shouldExpired = Math.random() > 0.5;
+        state.expDate = shouldExpired
           ? randomDate(new Date("2025-12-01"), new Date("2026-02-28"))
           : randomDate(new Date("2026-03-10"), new Date("2026-12-31"));
         state.isExpired = state.expDate < TODAY;
 
+        typeNpcText("第三步：先看外觀，再看時間線。這件商品是否過期？選正確按鈕就可以過關。⏱️");
+        el.hintText.textContent = "視覺提示：今日日期若在有效日期右邊（更晚），代表已過期。";
+
         el.interactionArea.innerHTML = `
-          <div class="rounded-xl border border-cyan-400/40 bg-cyan-500/10 p-3">
-            檢查商品：<span class="font-semibold text-cyan-200">${state.checkedProduct.name}</span>
+          <div class="grid gap-3 md:grid-cols-2">
+            <div class="rounded-xl border p-3 ${categoryStyles[state.checkedProduct.category]}">
+              <p class="text-lg">${state.checkedProduct.image} ${state.checkedProduct.name}</p>
+              <p class="mt-1 text-sm">有效日期：${state.checkedProduct.expiry}</p>
+              <p class="mt-1 text-sm ${state.checkedProduct.isDamaged ? "text-rose-300" : "text-emerald-300"}">缺損狀態：${state.checkedProduct.defectText}</p>
+              <div class="mt-2 rounded bg-white px-2 py-1 font-mono text-xs tracking-widest text-slate-900">${barcodeById[state.checkedProduct.id]}</div>
+            </div>
+            <div class="rounded-xl border border-cyan-300/40 bg-cyan-500/10 p-3 text-sm text-cyan-100">
+              檢查重點：
+              <ul class="mt-1 list-inside list-disc space-y-1">
+                <li>外觀有缺損先報廢</li>
+                <li>外觀正常再比較「今日 vs 有效日期」</li>
+              </ul>
+            </div>
           </div>
           ${renderTimeline(state.mfgDate, TODAY, state.expDate)}
           <div class="flex flex-wrap gap-3">
@@ -299,36 +454,36 @@
           </div>
         `;
 
-        el.hintText.textContent = "提示：比較今日日期與有效日期先後。";
-
         document.getElementById("expiredBtn").onclick = () => handleTimelineAnswer(true);
         document.getElementById("freshBtn").onclick = () => handleTimelineAnswer(false);
       }
 
       function handleTimelineAnswer(answerExpired) {
         if (answerExpired === state.isExpired) {
-          el.hintText.textContent = "✅ 判斷正確！";
+          el.hintText.textContent = "✅ 判斷正確！準備進入 FIFO 排序。";
           el.nextBtn.classList.remove("hidden");
         } else {
-          el.hintText.textContent = "❗再看一次時間線：若今日日期晚於有效日期，代表已過期。";
+          updateScore(state.score - 5);
+          el.hintText.textContent = `❗再看一次時間線位置。分數：${state.score}`;
         }
       }
 
       function setupStage4() {
         state.stage = 4;
         setProgress();
-        el.panelTitle.textContent = "State 4：上架排序（FIFO）";
+        el.panelTitle.textContent = "State 4：FIFO 先進先出";
         el.nextBtn.classList.add("hidden");
-        typeNpcText("最後一步：排序貨品！請依照『先進先出』原則，決定新舊貨的排列順序。");
+        typeNpcText("最後一步：依照先進先出（FIFO），有效日期較早的舊貨要放前面。請作最後判斷！");
+        el.hintText.textContent = "視覺提示：前排是顧客最先拿到的位置。";
 
         el.interactionArea.innerHTML = `
           <div class="grid gap-4 md:grid-cols-2">
             <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
-              <h4 class="mb-2 font-bold">貨架位置（前）</h4>
+              <h4 class="mb-2 font-bold">貨架前排（先拿到）</h4>
               <div id="frontSlot" class="rounded-lg border border-dashed border-slate-500 p-4 text-slate-300">等待排列</div>
             </div>
             <div class="rounded-xl border border-slate-600 bg-slate-900/70 p-4">
-              <h4 class="mb-2 font-bold">貨架位置（後）</h4>
+              <h4 class="mb-2 font-bold">貨架後排</h4>
               <div id="backSlot" class="rounded-lg border border-dashed border-slate-500 p-4 text-slate-300">等待排列</div>
             </div>
           </div>
@@ -348,14 +503,17 @@
         document.getElementById("oldFront").onclick = () => {
           frontSlot.textContent = "舊貨（2026-05-01）";
           backSlot.textContent = "新貨（2026-12-01）";
-          el.hintText.textContent = "🏆 完美！先進先出完成，恭喜完成陳列貨品訓練！";
+          frontSlot.classList.add("pulse-ok");
+          el.hintText.textContent = "🏆 完美！你已完成『O2O 達人店長』貨品陳列訓練。";
           el.restartBtn.classList.remove("hidden");
         };
 
         document.getElementById("newFront").onclick = () => {
           frontSlot.textContent = "新貨（2026-12-01）";
           backSlot.textContent = "舊貨（2026-05-01）";
-          el.hintText.textContent = "這樣會違反 FIFO，再試一次：有效日期較早的要放前面。";
+          frontSlot.classList.add("soft-warn");
+          updateScore(state.score - 5);
+          el.hintText.textContent = `這樣違反 FIFO，請再試一次。分數：${state.score}`;
         };
       }
 
@@ -367,8 +525,10 @@
 
       function resetGame() {
         state.stage = 1;
-        state.score = 100;
+        updateScore(100);
         state.selectedProducts = [];
+        state.scannedIds = new Set();
+        state.classifyMap = {};
         state.damagedProduct = null;
         state.checkedProduct = null;
         state.mfgDate = null;
@@ -380,6 +540,7 @@
       el.nextBtn.addEventListener("click", nextStage);
       el.restartBtn.addEventListener("click", resetGame);
 
+      updateScore(100);
       setupStage1();
     </script>
   </body>
