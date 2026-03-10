@@ -7,22 +7,24 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; background: radial-gradient(circle at top,#1e3a8a,#0f172a 45%,#020617); }
-      .glass { background: rgba(15,23,42,.75); border:1px solid rgba(148,163,184,.35); backdrop-filter: blur(8px); }
+      .glass { background: rgba(15,23,42,.75); border: 1px solid rgba(148,163,184,.35); backdrop-filter: blur(8px); }
       .typing::after { content:"▋"; animation: blink .8s infinite; }
       @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
-      .drop-ok { box-shadow: 0 0 0 2px rgba(16,185,129,.8) inset; }
-      .drop-warn { box-shadow: 0 0 0 2px rgba(244,63,94,.8) inset; }
       .product-card.dragging { opacity:.45; transform: scale(.98); }
+      .drop-ok { box-shadow: 0 0 0 2px rgba(16,185,129,.85) inset; }
+      .shelf-bg {
+        background:
+          linear-gradient(to bottom, transparent 0 40px, rgba(120,53,15,.95) 40px 48px, transparent 48px 120px, rgba(120,53,15,.95) 120px 128px, transparent 128px 200px, rgba(120,53,15,.95) 200px 208px, transparent 208px),
+          linear-gradient(120deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+        background-color: rgba(30,41,59,.55);
+      }
     </style>
   </head>
   <body class="min-h-screen text-slate-100">
     <main class="mx-auto max-w-7xl p-4 md:p-6">
       <section class="glass mb-4 rounded-2xl p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="text-xs text-slate-300">系統日期</p>
-            <p class="text-xl font-bold text-cyan-300">2026-03-09</p>
-          </div>
+          <div><p class="text-xs text-slate-300">系統日期</p><p class="text-xl font-bold text-cyan-300">2026-03-09</p></div>
           <div class="min-w-[260px] flex-1">
             <div class="mb-1 flex justify-between text-xs"><span>流程進度（共 5 步）</span><span id="stageText">第 1 / 5 步</span></div>
             <div class="h-3 rounded-full bg-slate-700"><div id="progressBar" class="h-full w-1/5 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all"></div></div>
@@ -50,264 +52,158 @@
 
     <script>
       const TODAY = new Date('2026-03-09');
+      const CATS = ['罐頭食品','飲品類','乾貨'];
       const products = [
-        { id: 1, name: '粟米罐頭', category: '罐頭食品', image: '🥫', expiry: '2026-08-20', isDamaged: false, defect: '完整無缺', barcode: '|| ||| | || ||||' },
-        { id: 2, name: '紅腰豆罐頭', category: '罐頭食品', image: '🥫', expiry: '2026-06-20', isDamaged: true, defect: '凹陷變形', barcode: '| || |||| | | |||' },
-        { id: 3, name: '番茄罐頭', category: '罐頭食品', image: '🥫', expiry: '2026-12-02', isDamaged: false, defect: '完整無缺', barcode: '||| | || | ||| ||' },
-        { id: 4, name: '抹茶味飲料', category: '飲品類', image: '🧃', expiry: '2026-04-20', isDamaged: false, defect: '完整無缺', barcode: '|| || ||| || | ||' },
-        { id: 5, name: '牛奶', category: '飲品類', image: '🥛', expiry: '2026-03-12', isDamaged: true, defect: '包裝漏液', barcode: '| ||| | || |||| |' },
-        { id: 6, name: '咖啡', category: '飲品類', image: '☕', expiry: '2026-11-18', isDamaged: false, defect: '完整無缺', barcode: '||| || | | ||| ||' },
-        { id: 7, name: '泰國船麵', category: '乾貨', image: '🍜', expiry: '2026-09-20', isDamaged: false, defect: '完整無缺', barcode: '|| | |||| || | |' },
-        { id: 8, name: '餅乾', category: '乾貨', image: '🍪', expiry: '2026-05-05', isDamaged: false, defect: '完整無缺', barcode: '| || ||| | || |||' },
-        { id: 9, name: '即食麵', category: '乾貨', image: '📦', expiry: '2026-02-25', isDamaged: true, defect: '包裝破洞', barcode: '||| | |||| | || |' }
+        { id:1,name:'粟米罐頭',category:'罐頭食品',image:'🥫',expiry:'2026-08-20',isDamaged:false,defect:'完整無缺',barcode:'|| ||| | || ||||' },
+        { id:2,name:'紅腰豆罐頭',category:'罐頭食品',image:'🥫',expiry:'2026-06-20',isDamaged:true,defect:'凹陷變形',barcode:'| || |||| | | |||' },
+        { id:3,name:'番茄罐頭',category:'罐頭食品',image:'🥫',expiry:'2026-12-02',isDamaged:false,defect:'完整無缺',barcode:'||| | || | ||| ||' },
+        { id:4,name:'抹茶味飲料',category:'飲品類',image:'🧃',expiry:'2026-04-20',isDamaged:false,defect:'完整無缺',barcode:'|| || ||| || | ||' },
+        { id:5,name:'牛奶',category:'飲品類',image:'🥛',expiry:'2026-03-12',isDamaged:true,defect:'包裝漏液',barcode:'| ||| | || |||| |' },
+        { id:6,name:'咖啡',category:'飲品類',image:'☕',expiry:'2026-11-18',isDamaged:false,defect:'完整無缺',barcode:'||| || | | ||| ||' },
+        { id:7,name:'泰國船麵',category:'乾貨',image:'🍜',expiry:'2026-09-20',isDamaged:false,defect:'完整無缺',barcode:'|| | |||| || | |' },
+        { id:8,name:'餅乾',category:'乾貨',image:'🍪',expiry:'2026-05-05',isDamaged:false,defect:'完整無缺',barcode:'| || ||| | || |||' },
+        { id:9,name:'即食麵',category:'乾貨',image:'📦',expiry:'2026-02-25',isDamaged:true,defect:'包裝破洞',barcode:'||| | |||| | || |' }
       ];
 
-      const state = {
-        stage: 1,
-        score: 100,
-        scanned: new Set(),
-        classify: {},
-        appearanceItem: null,
-        expiryItem: null,
-        fifoOrder: []
-      };
-
+      const state = { stage:1, score:100, scanned:new Set(), stage3Done:false, stage4Done:false };
       const el = {
-        stageText: document.getElementById('stageText'),
-        progressBar: document.getElementById('progressBar'),
-        scoreText: document.getElementById('scoreText'),
-        npcText: document.getElementById('npcText'),
-        hintText: document.getElementById('hintText'),
-        panelTitle: document.getElementById('panelTitle'),
-        interactionArea: document.getElementById('interactionArea'),
-        nextBtn: document.getElementById('nextBtn'),
-        restartBtn: document.getElementById('restartBtn')
+        stageText: document.getElementById('stageText'), progressBar: document.getElementById('progressBar'), scoreText: document.getElementById('scoreText'),
+        npcText: document.getElementById('npcText'), hintText: document.getElementById('hintText'), panelTitle: document.getElementById('panelTitle'),
+        interactionArea: document.getElementById('interactionArea'), nextBtn: document.getElementById('nextBtn'), restartBtn: document.getElementById('restartBtn')
       };
 
-      function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
-      function updateScore(v){ state.score = Math.max(0, v); el.scoreText.textContent = state.score; }
-      function updateHeader(){ el.stageText.textContent = `第 ${state.stage} / 5 步`; el.progressBar.style.width = `${state.stage/5*100}%`; }
-      function formatDate(d){ return d.toISOString().slice(0,10); }
-      function typeText(t){
-        el.npcText.textContent=''; el.npcText.classList.add('typing'); let i=0;
-        const timer=setInterval(()=>{ el.npcText.textContent += t[i] || ''; i++; if(i>t.length){clearInterval(timer); el.npcText.classList.remove('typing');}},18);
-      }
+      const byId = (id)=>products.find(p=>p.id===Number(id));
+      const isExpired = (p)=>new Date(p.expiry) < TODAY;
+      function updateScore(v){ state.score = Math.max(0,v); el.scoreText.textContent = state.score; }
+      function updateHeader(){ el.stageText.textContent=`第 ${state.stage} / 5 步`; el.progressBar.style.width=`${state.stage/5*100}%`; }
+      function typeText(text){ el.npcText.textContent=''; el.npcText.classList.add('typing'); let i=0; const t=setInterval(()=>{ el.npcText.textContent += text[i]||''; i++; if(i>text.length){clearInterval(t); el.npcText.classList.remove('typing');}},18); }
 
-      function productTile(p, draggable=false){
-        return `<div class="product-card rounded-xl border border-slate-500 bg-slate-900/80 p-3" ${draggable?`draggable="true" data-drag-id="${p.id}"`:''}>
-          <div class="mb-1 flex items-center justify-between"><span class="text-lg">${p.image} ${p.name}</span><span class="rounded bg-slate-700 px-2 py-0.5 text-xs">${p.category}</span></div>
-          <p class="text-xs text-slate-300">有效日期：${p.expiry}</p>
-          <p class="text-xs ${p.isDamaged?'text-rose-300':'text-emerald-300'}">外觀：${p.defect}</p>
-          <button data-scan-id="${p.id}" class="scan-btn mt-2 w-full rounded border border-cyan-300/50 bg-cyan-500/20 px-2 py-1 text-xs">點擊條碼掃描
-            <div class="mt-1 rounded bg-white px-1 py-0.5 font-mono tracking-widest text-slate-900">${p.barcode}</div>
-          </button>
+      function cardHTML(p,{draggable=false,showScan=false,dataKey='data-pid'}={}){
+        return `<div class="product-card rounded-xl border border-slate-500 bg-slate-900/85 p-2" ${draggable?`draggable="true" ${dataKey}="${p.id}"`:''} ${!draggable?`${dataKey}="${p.id}"`:''}>
+          <div class="flex items-center justify-between"><span class="text-sm">${p.image} ${p.name}</span><span class="rounded bg-slate-700 px-1.5 text-[10px]">${p.category}</span></div>
+          <p class="text-[11px] text-slate-300">有效日期：${p.expiry}</p>
+          <p class="text-[11px] ${p.isDamaged?'text-rose-300':'text-emerald-300'}">外觀：${p.defect}</p>
+          ${showScan?`<button data-scan-id="${p.id}" class="scan-btn mt-1 w-full rounded border border-cyan-300/40 bg-cyan-500/20 text-[11px]">點擊條碼掃描<div class="mt-0.5 rounded bg-white px-1 font-mono text-slate-900">${p.barcode}</div></button>`:''}
         </div>`;
       }
 
       function setupStage1(){
-        state.stage=1; updateHeader(); state.scanned = new Set();
+        state.stage=1; state.scanned = new Set(); updateHeader();
         el.panelTitle.textContent='步驟1：九件貨品條碼掃描';
-        typeText('第一步先做入庫！9 件貨品一次過到貨，請逐件點擊條碼完成掃描。');
-        el.hintText.textContent='視覺提示：掃描成功按鈕會變綠色。';
+        typeText('第1步：9件貨品已放到貨架，請逐件點擊條碼完成入庫掃描。');
+        el.hintText.textContent='貨架背景模擬：請在每件貨卡點擊條碼。';
         el.nextBtn.classList.add('hidden'); el.restartBtn.classList.add('hidden');
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><div class="grid gap-2 md:grid-cols-3">${products.map(p=>cardHTML(p,{showScan:true})).join('')}</div></div><div id="scanProgress" class="rounded-lg bg-emerald-500/10 p-2 text-sm text-emerald-200">已掃描 0 / 9</div>`;
 
-        el.interactionArea.innerHTML = `<div class="grid gap-3 md:grid-cols-3">${products.map(p=>productTile(p)).join('')}</div>
-          <div id="scanProgress" class="rounded-lg bg-emerald-500/10 p-2 text-sm text-emerald-200">已掃描 0 / 9</div>`;
-
-        document.querySelectorAll('.scan-btn').forEach(btn=>{
-          btn.addEventListener('click',()=>{
-            const id=Number(btn.dataset.scanId); if(state.scanned.has(id)) return;
-            state.scanned.add(id);
-            btn.classList.remove('bg-cyan-500/20'); btn.classList.add('bg-emerald-500/25','border-emerald-300/60');
-            btn.firstChild.textContent='✅ 已掃描';
-            document.getElementById('scanProgress').textContent=`已掃描 ${state.scanned.size} / 9`;
-            if(state.scanned.size===9){ el.hintText.textContent='全部掃描完成，進入分類。'; el.nextBtn.classList.remove('hidden'); }
-          });
-        });
+        document.querySelectorAll('.scan-btn').forEach(btn=>btn.addEventListener('click',()=>{
+          const id=Number(btn.dataset.scanId); if(state.scanned.has(id)) return; state.scanned.add(id);
+          btn.classList.replace('bg-cyan-500/20','bg-emerald-500/25'); btn.innerHTML='✅ 已掃描';
+          document.getElementById('scanProgress').textContent = `已掃描 ${state.scanned.size} / 9`;
+          if(state.scanned.size===9){ el.hintText.textContent='✅ 全部掃描完成，進入分類。'; el.nextBtn.classList.remove('hidden'); }
+        }));
       }
 
       function setupStage2(){
-        state.stage=2; updateHeader(); state.classify={};
-        el.panelTitle.textContent='步驟2：拖放分類（9件）';
-        typeText('第二步分類：請把 9 件貨品拖到正確類別區域（罐頭食品 / 飲品類 / 乾貨）。');
-        el.hintText.textContent='拖放提示：拖動卡片到分類框。';
+        state.stage=2; updateHeader();
+        el.panelTitle.textContent='步驟2：拖放分類（9件全部）';
+        typeText('第2步：請把9件貨品拖放到正確種類貨架位置。');
+        el.hintText.textContent='每件都要分類完成，才可進入下一步。';
         el.nextBtn.classList.add('hidden');
-
-        el.interactionArea.innerHTML = `
-          <div class="rounded-xl border border-slate-600 bg-slate-900/60 p-3">
-            <p class="mb-2 text-sm text-slate-200">待分類貨品</p>
-            <div id="pool" class="grid gap-2 md:grid-cols-3">${products.map(p=>`<div id="drag-${p.id}">${productTile(p,true).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div>
-          </div>
-          <div class="grid gap-3 md:grid-cols-3">
-            ${['罐頭食品','飲品類','乾貨'].map(c=>`<div class="drop-zone min-h-[150px] rounded-xl border-2 border-dashed border-cyan-300/40 bg-cyan-500/5 p-2" data-cat="${c}"><p class="mb-2 text-sm font-bold text-cyan-200">${c}</p><div class="space-y-2"></div></div>`).join('')}
-          </div>
-          <button id="verifyClassify" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查分類</button>`;
-
-        initDragAndDrop();
-
-        document.getElementById('verifyClassify').onclick = ()=>{
-          const assigned = document.querySelectorAll('.drop-zone .product-card').length;
-          if(assigned!==9){ el.hintText.textContent='仍有貨品未分類，請把 9 件全部拖入分類區。'; return; }
-          let ok=true;
-          document.querySelectorAll('.drop-zone').forEach(zone=>{
-            const cat=zone.dataset.cat;
-            zone.querySelectorAll('.product-card').forEach(card=>{
-              const id=Number(card.dataset.dragId);
-              const p=products.find(x=>x.id===id);
-              if(p.category!==cat) ok=false;
-            });
-          });
-          if(ok){ el.hintText.textContent='✅ 分類全部正確！'; el.nextBtn.classList.remove('hidden'); }
-          else { updateScore(state.score-10); el.hintText.textContent=`❌ 有分類錯誤，請調整。分數：${state.score}`; }
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待分類貨品</p><div id="pool" class="grid gap-2 md:grid-cols-3">${products.map(p=>`<div id="wrap-${p.id}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-3">${CATS.map(c=>`<div class="drop-zone shelf-bg min-h-[180px] rounded-xl border-2 border-dashed border-cyan-300/40 p-2" data-cat="${c}"><p class="mb-2 text-sm font-bold text-cyan-200">${c}貨架</p><div class="space-y-1"></div></div>`).join('')}</div><button id="verify2" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查分類</button>`;
+        initDrag('[data-pid]','.drop-zone','[data-pid]');
+        document.getElementById('verify2').onclick=()=>{
+          const count=document.querySelectorAll('.drop-zone [data-pid]').length;
+          if(count!==9){ el.hintText.textContent='仍有貨品未分類。'; return; }
+          let ok=true; document.querySelectorAll('.drop-zone').forEach(z=>z.querySelectorAll('[data-pid]').forEach(c=>{ if(byId(c.dataset.pid).category!==z.dataset.cat) ok=false; }));
+          if(ok){ el.hintText.textContent='✅ 分類全對，進入外觀審核。'; el.nextBtn.classList.remove('hidden'); }
+          else { updateScore(state.score-10); el.hintText.textContent=`❌ 分類有誤，請調整。分數：${state.score}`; }
         };
       }
 
-      function initDragAndDrop(){
-        const cards = document.querySelectorAll('[draggable="true"]');
-        let dragging = null;
-        cards.forEach(card=>{
+      function setupStage3(){
+        state.stage=3; updateHeader();
+        el.panelTitle.textContent='步驟3：外觀審核（9件全部）';
+        typeText('第3步：把9件貨品拖到「可上架」或「不可上架」貨架區。每件都要判斷。');
+        el.hintText.textContent='凹陷、漏液、破洞 -> 不可上架。';
+        el.nextBtn.classList.add('hidden');
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待審核貨品</p><div id="pool3" class="grid gap-2 md:grid-cols-3">${products.map(p=>`<div id="a-${p.id}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-2"><div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-emerald-300/40 p-2" data-judge="allow"><p class="font-bold text-emerald-300">可上架貨架</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-rose-300/40 p-2" data-judge="deny"><p class="font-bold text-rose-300">不可上架貨架</p><div class="space-y-1"></div></div></div><button id="verify3" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查外觀判斷</button>`;
+        initDrag('[data-pid]','.drop-zone','[data-pid]');
+        document.getElementById('verify3').onclick=()=>{
+          const count=document.querySelectorAll('.drop-zone [data-pid]').length; if(count!==9){ el.hintText.textContent='請完成9件外觀判斷。'; return; }
+          let ok=true; document.querySelectorAll('[data-judge="allow"] [data-pid]').forEach(c=>{ if(byId(c.dataset.pid).isDamaged) ok=false; });
+          document.querySelectorAll('[data-judge="deny"] [data-pid]').forEach(c=>{ if(!byId(c.dataset.pid).isDamaged) ok=false; });
+          if(ok){ state.stage3Done=true; el.hintText.textContent='✅ 9件外觀判斷正確。'; el.nextBtn.classList.remove('hidden'); }
+          else { updateScore(state.score-10); el.hintText.textContent=`❌ 外觀判斷有錯。分數：${state.score}`; }
+        };
+      }
+
+      function setupStage4(){
+        state.stage=4; updateHeader();
+        el.panelTitle.textContent='步驟4：有效日期判斷（9件全部）';
+        typeText('第4步：把9件貨品拖到「有效期內」或「已過期」貨架區。每件都要做。');
+        el.hintText.textContent='今天是 2026-03-09。日期較早則過期。';
+        el.nextBtn.classList.add('hidden');
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待效期判斷貨品</p><div id="pool4" class="grid gap-2 md:grid-cols-3">${products.map(p=>`<div id="e-${p.id}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-2"><div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-emerald-300/40 p-2" data-exp="valid"><p class="font-bold text-emerald-300">有效期內貨架</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-rose-300/40 p-2" data-exp="expired"><p class="font-bold text-rose-300">已過期貨架</p><div class="space-y-1"></div></div></div><button id="verify4" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查效期判斷</button>`;
+        initDrag('[data-pid]','.drop-zone','[data-pid]');
+        document.getElementById('verify4').onclick=()=>{
+          const count=document.querySelectorAll('.drop-zone [data-pid]').length; if(count!==9){ el.hintText.textContent='請完成9件效期判斷。'; return; }
+          let ok=true; document.querySelectorAll('[data-exp="valid"] [data-pid]').forEach(c=>{ if(isExpired(byId(c.dataset.pid))) ok=false; });
+          document.querySelectorAll('[data-exp="expired"] [data-pid]').forEach(c=>{ if(!isExpired(byId(c.dataset.pid))) ok=false; });
+          if(ok){ state.stage4Done=true; el.hintText.textContent='✅ 9件效期判斷正確。'; el.nextBtn.classList.remove('hidden'); }
+          else { updateScore(state.score-10); el.hintText.textContent=`❌ 效期判斷有錯。分數：${state.score}`; }
+        };
+      }
+
+      function setupStage5(){
+        state.stage=5; updateHeader();
+        el.panelTitle.textContent='步驟5：貨架 FIFO 排序（所有可上架且有效貨品）';
+        typeText('第5步：把可上架且有效的貨品，按同分類「到期日由早到晚」拖到貨架前→後。');
+        el.nextBtn.classList.add('hidden'); el.restartBtn.classList.add('hidden');
+        const qualified = products.filter(p=>!p.isDamaged && !isExpired(p));
+        const grouped = Object.fromEntries(CATS.map(c=>[c, qualified.filter(p=>p.category===c)]));
+        el.hintText.textContent='每個分類都要排序完成，前排放較早到期。';
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待上架貨品（可上架＋有效）</p><div id="pool5" class="grid gap-2 md:grid-cols-3">${qualified.map(p=>cardHTML(p,{draggable:true,dataKey:'data-fid'}).replace(/<button[\s\S]*?<\/button>/,'')).join('')}</div></div>${CATS.map(cat=>`<div class="shelf-bg rounded-xl border border-slate-500 p-3"><p class="mb-2 text-sm font-bold text-cyan-200">${cat}貨架（由前到後）</p><div class="grid gap-2 md:grid-cols-${Math.max(2,grouped[cat].length)}">${grouped[cat].map((_,idx)=>`<div class="fifo-slot min-h-[94px] rounded-lg border-2 border-dashed border-cyan-300/50 p-1" data-cat="${cat}" data-idx="${idx}"><p class="text-[11px] text-slate-300">${idx===0?'前排':idx===grouped[cat].length-1?'後排':'中排'}</p></div>`).join('')}</div></div>`).join('')}<button id="verify5" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查 FIFO 排序</button>`;
+
+        initDrag('[data-fid]','.fifo-slot','[data-fid]','pool5');
+        document.getElementById('verify5').onclick=()=>{
+          let ok=true;
+          CATS.forEach(cat=>{
+            const slots=[...document.querySelectorAll(`.fifo-slot[data-cat="${cat}"]`)];
+            const dates=slots.map(s=>s.querySelector('[data-fid]')?.querySelector('p.text-[11px]')?.textContent?.replace('有效日期：','').trim()||null);
+            if(dates.includes(null)) ok=false;
+            const sorted=[...dates].sort(); if(!dates.every((d,i)=>d===sorted[i])) ok=false;
+            slots.forEach(s=>s.classList.remove('drop-ok'));
+          });
+          if(ok){ el.hintText.textContent='🏆 完成！第1至第5步已用貨架拖放方式完成。'; el.restartBtn.classList.remove('hidden'); }
+          else { updateScore(state.score-10); el.hintText.textContent=`❌ FIFO 排序未完成或順序不正確。分數：${state.score}`; }
+        };
+      }
+
+      function initDrag(cardSel, zoneSel, checkSel, poolId='pool'){
+        let dragging=null;
+        document.querySelectorAll(cardSel).forEach(card=>{
           card.addEventListener('dragstart',()=>{ dragging=card; card.classList.add('dragging'); });
           card.addEventListener('dragend',()=> card.classList.remove('dragging'));
         });
-        document.querySelectorAll('.drop-zone').forEach(zone=>{
+        document.querySelectorAll(zoneSel).forEach(zone=>{
           zone.addEventListener('dragover',(e)=>{ e.preventDefault(); zone.classList.add('drop-ok'); });
           zone.addEventListener('dragleave',()=> zone.classList.remove('drop-ok'));
           zone.addEventListener('drop',(e)=>{
             e.preventDefault(); zone.classList.remove('drop-ok');
             if(!dragging) return;
-            zone.querySelector('div').appendChild(dragging.closest('[id^="drag-"]'));
+            if(zone.classList.contains('fifo-slot')){
+              const exist = zone.querySelector(checkSel); if(exist) document.getElementById(poolId).appendChild(exist);
+              zone.appendChild(dragging);
+            } else {
+              zone.querySelector('div').appendChild(dragging.closest('[id^="wrap-"]') || dragging.closest('[id^="a-"]') || dragging.closest('[id^="e-"]'));
+            }
           });
         });
       }
 
-      function setupStage3(){
-        state.stage=3; updateHeader();
-        state.appearanceItem = shuffle(products)[0];
-        el.panelTitle.textContent='步驟3：外觀可否上架判斷';
-        typeText('第三步外觀檢查：根據貨品狀況，判斷是否可以上架。');
-        el.nextBtn.classList.add('hidden');
-
-        const p = state.appearanceItem;
-        el.hintText.textContent='提示：外觀受損（凹陷、漏液、破洞）不可上架。';
-        el.interactionArea.innerHTML = `
-          <div class="rounded-xl border border-slate-500 bg-slate-900/70 p-4">
-            <p class="text-2xl">${p.image} ${p.name}</p>
-            <p class="mt-2 text-sm">外觀狀況：<span class="font-bold ${p.isDamaged?'text-rose-300':'text-emerald-300'}">${p.defect}</span></p>
-            <p class="text-sm text-slate-300">有效日期：${p.expiry}</p>
-            <div class="mt-3 flex gap-2">
-              <button id="allowShelf" class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900">可以上架</button>
-              <button id="denyShelf" class="rounded-lg bg-rose-500 px-4 py-2 font-bold">不可上架</button>
-            </div>
-          </div>`;
-
-        document.getElementById('allowShelf').onclick = ()=>judgeAppearance(true);
-        document.getElementById('denyShelf').onclick = ()=>judgeAppearance(false);
-      }
-
-      function judgeAppearance(canShelf){
-        const correct = state.appearanceItem.isDamaged ? !canShelf : canShelf;
-        if(correct){ el.hintText.textContent='✅ 外觀判斷正確。'; el.nextBtn.classList.remove('hidden'); }
-        else { updateScore(state.score-5); el.hintText.textContent=`❌ 再檢查外觀缺損。分數：${state.score}`; }
-      }
-
-      function setupStage4(){
-        state.stage=4; updateHeader();
-        state.expiryItem = shuffle(products)[0];
-        el.panelTitle.textContent='步驟4：有效日期判斷';
-        typeText('第四步效期檢查：判斷該貨品是過期還是有效期內。');
-        el.nextBtn.classList.add('hidden');
-
-        const p=state.expiryItem;
-        const exp = new Date(p.expiry);
-        const expired = exp < TODAY;
-        el.hintText.textContent='提示：今天是 2026-03-09，較早日期即過期。';
-        el.interactionArea.innerHTML = `
-          <div class="rounded-xl border border-slate-500 bg-slate-900/70 p-4">
-            <p class="text-2xl">${p.image} ${p.name}</p>
-            <p class="mt-2 text-sm">有效日期：<span class="font-bold">${p.expiry}</span></p>
-            <div class="mt-3 flex gap-2">
-              <button id="expiredBtn" class="rounded-lg bg-rose-500 px-4 py-2 font-bold">已過期</button>
-              <button id="validBtn" class="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900">仍有效</button>
-            </div>
-          </div>`;
-
-        document.getElementById('expiredBtn').onclick = ()=>judgeExpiry(true, expired);
-        document.getElementById('validBtn').onclick = ()=>judgeExpiry(false, expired);
-      }
-
-      function judgeExpiry(answerExpired, expired){
-        if(answerExpired===expired){ el.hintText.textContent='✅ 效期判斷正確。'; el.nextBtn.classList.remove('hidden'); }
-        else { updateScore(state.score-5); el.hintText.textContent=`❌ 日期比較錯誤，再試一次。分數：${state.score}`; }
-      }
-
-      function setupStage5(){
-        state.stage=5; updateHeader();
-        el.panelTitle.textContent='步驟5：FIFO 拖放排序（同款不同日期）';
-        typeText('最後一步實戰陳列：把同款不同效期的貨品拖到正確位置，前排要放較早到期。');
-        el.nextBtn.classList.add('hidden');
-
-        const sku = { name:'抹茶味飲料', image:'🧃' };
-        const variants = shuffle([
-          { id:'a', expiry:'2026-04-01' },
-          { id:'b', expiry:'2026-06-01' },
-          { id:'c', expiry:'2026-08-01' }
-        ]);
-
-        el.hintText.textContent='拖放提示：前排（最先被拿）→ 中排 → 後排，請按到期日由早到晚排列。';
-        el.interactionArea.innerHTML = `
-          <div class="rounded-xl border border-slate-600 bg-slate-900/60 p-3">
-            <p class="mb-2 text-sm text-slate-200">待排序同款貨品</p>
-            <div id="fifoPool" class="grid gap-2 md:grid-cols-3">
-              ${variants.map(v=>`<div class="product-card rounded-lg border border-slate-500 bg-slate-800 p-3" draggable="true" data-fifo-id="${v.id}" data-expiry="${v.expiry}">${sku.image} ${sku.name}<p class="text-xs text-slate-300">有效日期：${v.expiry}</p></div>`).join('')}
-            </div>
-          </div>
-          <div class="grid gap-3 md:grid-cols-3">
-            <div class="fifo-slot min-h-[100px] rounded-xl border-2 border-dashed border-emerald-300/60 bg-emerald-500/10 p-2" data-pos="0"><p class="text-sm font-bold text-emerald-300">前排（最先拿）</p></div>
-            <div class="fifo-slot min-h-[100px] rounded-xl border-2 border-dashed border-cyan-300/60 bg-cyan-500/10 p-2" data-pos="1"><p class="text-sm font-bold text-cyan-300">中排</p></div>
-            <div class="fifo-slot min-h-[100px] rounded-xl border-2 border-dashed border-fuchsia-300/60 bg-fuchsia-500/10 p-2" data-pos="2"><p class="text-sm font-bold text-fuchsia-300">後排</p></div>
-          </div>
-          <button id="verifyFifo" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查 FIFO 排列</button>`;
-
-        initFifoDrag();
-        document.getElementById('verifyFifo').onclick = ()=>{
-          const slots = [...document.querySelectorAll('.fifo-slot')];
-          const arr = slots.map(s=>s.querySelector('[data-fifo-id]')?.dataset.expiry || null);
-          if(arr.includes(null)){ el.hintText.textContent='請先把三件貨品都拖入前/中/後排。'; return; }
-          const sorted = [...arr].sort();
-          const ok = arr.every((d,i)=>d===sorted[i]);
-          if(ok){ el.hintText.textContent='🏆 完成！你已成功用拖放方式完成陳列訓練。'; el.restartBtn.classList.remove('hidden'); }
-          else { updateScore(state.score-10); el.hintText.textContent=`❌ FIFO 排序未正確（應由早到期放前）。分數：${state.score}`; }
-        };
-      }
-
-      function initFifoDrag(){
-        let drag = null;
-        document.querySelectorAll('[data-fifo-id]').forEach(card=>{
-          card.addEventListener('dragstart',()=>{ drag=card; card.classList.add('dragging');});
-          card.addEventListener('dragend',()=>card.classList.remove('dragging'));
-        });
-        document.querySelectorAll('.fifo-slot').forEach(slot=>{
-          slot.addEventListener('dragover',(e)=>e.preventDefault());
-          slot.addEventListener('drop',(e)=>{
-            e.preventDefault(); if(!drag) return;
-            const existing = slot.querySelector('[data-fifo-id]');
-            if(existing) document.getElementById('fifoPool').appendChild(existing);
-            slot.appendChild(drag);
-          });
-        });
-      }
-
-      function nextStage(){
-        if(state.stage===1) return setupStage2();
-        if(state.stage===2) return setupStage3();
-        if(state.stage===3) return setupStage4();
-        if(state.stage===4) return setupStage5();
-      }
-
-      function reset(){ updateScore(100); state.stage=1; setupStage1(); }
-
-      el.nextBtn.addEventListener('click', nextStage);
-      el.restartBtn.addEventListener('click', reset);
+      function nextStage(){ if(state.stage===1) return setupStage2(); if(state.stage===2) return setupStage3(); if(state.stage===3) return setupStage4(); if(state.stage===4) return setupStage5(); }
+      function reset(){ updateScore(100); setupStage1(); }
+      el.nextBtn.addEventListener('click', nextStage); el.restartBtn.addEventListener('click', reset);
       updateScore(100); setupStage1();
     </script>
   </body>
