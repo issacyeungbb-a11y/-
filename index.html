@@ -26,7 +26,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div><p class="text-xs text-slate-300">系統日期</p><p class="text-xl font-bold text-cyan-300">2026-03-09</p></div>
           <div class="min-w-[260px] flex-1">
-            <div class="mb-1 flex justify-between text-xs"><span>流程進度（共 5 步）</span><span id="stageText">第 0 / 5 步</span></div>
+            <div class="mb-1 flex justify-between text-xs"><span>流程進度（共 4 步）</span><span id="stageText">第 0 / 4 步</span></div>
             <div class="h-3 rounded-full bg-slate-700"><div id="progressBar" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all"></div></div>
           </div>
           <div class="rounded-lg bg-emerald-500/15 px-3 py-2 text-sm">分數：<span id="scoreText" class="font-bold text-emerald-300">100</span></div>
@@ -54,18 +54,27 @@
       const TODAY = new Date('2026-03-09');
       const CATS = ['罐頭食品','飲品類','乾貨'];
       const baseProducts = [
-        { key:'corn', name:'粟米罐頭', category:'罐頭食品', image:'🥫', expiry:'2026-08-20', isDamaged:false, defect:'完整無缺', barcode:'|| ||| | || ||||' },
-        { key:'kidney', name:'紅腰豆罐頭', category:'罐頭食品', image:'🥫', expiry:'2026-06-20', isDamaged:true, defect:'凹陷變形', barcode:'| || |||| | | |||' },
-        { key:'tomato', name:'番茄罐頭', category:'罐頭食品', image:'🥫', expiry:'2026-12-02', isDamaged:false, defect:'完整無缺', barcode:'||| | || | ||| ||' },
-        { key:'matcha', name:'抹茶味飲料', category:'飲品類', image:'🧃', expiry:'2026-04-20', isDamaged:false, defect:'完整無缺', barcode:'|| || ||| || | ||' },
-        { key:'milk', name:'牛奶', category:'飲品類', image:'🥛', expiry:'2026-03-12', isDamaged:true, defect:'包裝漏液', barcode:'| ||| | || |||| |' },
-        { key:'coffee', name:'咖啡', category:'飲品類', image:'☕', expiry:'2026-11-18', isDamaged:false, defect:'完整無缺', barcode:'||| || | | ||| ||' },
-        { key:'boat', name:'泰國船麵', category:'乾貨', image:'🍜', expiry:'2026-09-20', isDamaged:false, defect:'完整無缺', barcode:'|| | |||| || | |' },
-        { key:'biscuit', name:'餅乾', category:'乾貨', image:'🍪', expiry:'2026-05-05', isDamaged:false, defect:'完整無缺', barcode:'| || ||| | || |||' },
-        { key:'instant', name:'即食麵', category:'乾貨', image:'📦', expiry:'2026-02-25', isDamaged:true, defect:'包裝破洞', barcode:'||| | |||| | || |' }
+        { key:'corn', name:'粟米罐頭', category:'罐頭食品', image:'🥫', baseExpiry:'2026-08-20', barcode:'|| ||| | || ||||' },
+        { key:'kidney', name:'紅腰豆罐頭', category:'罐頭食品', image:'🥫', baseExpiry:'2026-06-20', barcode:'| || |||| | | |||' },
+        { key:'tomato', name:'番茄罐頭', category:'罐頭食品', image:'🥫', baseExpiry:'2026-12-02', barcode:'||| | || | ||| ||' },
+        { key:'matcha', name:'抹茶味飲料', category:'飲品類', image:'🧃', baseExpiry:'2026-04-20', barcode:'|| || ||| || | ||' },
+        { key:'milk', name:'牛奶', category:'飲品類', image:'🥛', baseExpiry:'2026-03-20', barcode:'| ||| | || |||| |' },
+        { key:'coffee', name:'咖啡', category:'飲品類', image:'☕', baseExpiry:'2026-11-18', barcode:'||| || | | ||| ||' },
+        { key:'boat', name:'泰國船麵', category:'乾貨', image:'🍜', baseExpiry:'2026-09-20', barcode:'|| | |||| || | |' },
+        { key:'biscuit', name:'餅乾', category:'乾貨', image:'🍪', baseExpiry:'2026-05-05', barcode:'| || ||| | || |||' },
+        { key:'instant', name:'即食麵', category:'乾貨', image:'📦', baseExpiry:'2026-04-15', barcode:'||| | |||| | || |' }
       ];
 
-      const state = { stage:0, score:100, batches:[], activeBatch:[], scanned:new Set() };
+      const state = {
+        stage: 0,
+        score: 100,
+        batches: [],
+        activeBatch: [],
+        scanned: new Set(),
+        sortableItems: [],
+        sortCategoryIndex: 0
+      };
+
       const el = {
         stageText: document.getElementById('stageText'), progressBar: document.getElementById('progressBar'), scoreText: document.getElementById('scoreText'),
         npcText: document.getElementById('npcText'), hintText: document.getElementById('hintText'), panelTitle: document.getElementById('panelTitle'),
@@ -75,30 +84,49 @@
       const byUid = (uid)=>state.activeBatch.find(p=>p.uid===uid);
       const isExpired = (p)=>new Date(p.expiry) < TODAY;
       const shuffle=(a)=>[...a].sort(()=>Math.random()-0.5);
+
       function updateScore(v){ state.score = Math.max(0,v); el.scoreText.textContent = state.score; }
-      function updateHeader(){ el.stageText.textContent=`第 ${state.stage} / 5 步`; el.progressBar.style.width=`${Math.max(0,state.stage)/5*100}%`; }
-      function typeText(t){ el.npcText.textContent=''; el.npcText.classList.add('typing'); let i=0; const timer=setInterval(()=>{ el.npcText.textContent+=t[i]||''; i++; if(i>t.length){clearInterval(timer); el.npcText.classList.remove('typing');}},16); }
+      function updateHeader(){ el.stageText.textContent=`第 ${state.stage} / 4 步`; el.progressBar.style.width=`${Math.max(0,state.stage)/4*100}%`; }
+      function typeText(t){ el.npcText.textContent=''; el.npcText.classList.add('typing'); let i=0; const timer=setInterval(()=>{ el.npcText.textContent += t[i] || ''; i++; if(i>t.length){clearInterval(timer); el.npcText.classList.remove('typing');}},16); }
+
+      function shiftDate(iso, days){ const d = new Date(iso); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 
       function generateBatches(){
-        state.batches = Array.from({length:5}, (_,batchIdx)=> {
+        state.batches = Array.from({length:5}, (_,batchIdx)=>{
           const batch=[];
           baseProducts.forEach((base)=>{
             for(let i=1;i<=3;i++){
               batch.push({
-                ...base,
                 uid: `${batchIdx+1}-${base.key}-${i}`,
+                key: base.key,
+                name: base.name,
+                category: base.category,
+                image: base.image,
+                barcode: base.barcode,
                 copyNo: i,
-                expiry: shiftDate(base.expiry, (batchIdx*2)+(i-2)*2)
+                expiry: shiftDate(base.baseExpiry, batchIdx + i - 2),
+                isDamaged: false,
+                defect: '完整無缺'
               });
             }
           });
+
+          const idxs = batch.map((_,i)=>i);
+          const damagedIdxs = shuffle(idxs).slice(0,5);
+          damagedIdxs.forEach((i)=>{
+            batch[i].isDamaged = true;
+            batch[i].defect = ['凹陷變形','包裝破洞','漏液'][i%3];
+          });
+
+          const remain = idxs.filter(i=>!damagedIdxs.includes(i));
+          const expiredIdxs = shuffle(remain).slice(0,5);
+          expiredIdxs.forEach((i)=>{
+            const past = shiftDate('2026-03-01', -(i%7));
+            batch[i].expiry = past;
+          });
+
           return shuffle(batch);
         });
-      }
-
-      function shiftDate(iso, days){
-        const d = new Date(iso); d.setDate(d.getDate()+days);
-        return d.toISOString().slice(0,10);
       }
 
       function cardHTML(p,{draggable=false,showScan=false,dataKey='data-uid'}={}){
@@ -113,8 +141,8 @@
       function setupIntro(){
         state.stage=0; updateHeader();
         el.panelTitle.textContent='開場：打開貨箱';
-        typeText('歡迎開始訓練！今日預設有 5 批貨，每批 27 件（9款 x 各3件）。先打開貨箱，系統會隨機展開其中一批。');
-        el.hintText.textContent='點擊「打開貨箱」後，就會載入本次訓練批次。';
+        typeText('今日有預設 5 批貨，每批 27 件（9款x3）。請先打開貨箱，系統會隨機展開其中一批。');
+        el.hintText.textContent='每批已預設約 5 件損壞、5 件過期。';
         el.nextBtn.classList.add('hidden'); el.restartBtn.classList.add('hidden');
 
         el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-6 text-center">
@@ -125,7 +153,7 @@
 
         document.getElementById('openBox').onclick = ()=>{
           state.activeBatch = shuffle(state.batches)[0];
-          el.hintText.textContent = `已隨機選中 1 批貨品，共 ${state.activeBatch.length} 件。開始步驟 1。`;
+          el.hintText.textContent = `已隨機選中 1 批，共 ${state.activeBatch.length} 件。`;
           setupStage1();
         };
       }
@@ -136,6 +164,7 @@
         typeText('請在貨架上逐件掃描本批次 27 件貨品條碼。');
         el.hintText.textContent='全部掃描完才可下一步。';
         el.nextBtn.classList.add('hidden');
+
         el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><div class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>cardHTML(p,{showScan:true})).join('')}</div></div><div id="scanProgress" class="rounded-lg bg-emerald-500/10 p-2 text-sm text-emerald-200">已掃描 0 / ${state.activeBatch.length}</div>`;
 
         document.querySelectorAll('.scan-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -151,12 +180,15 @@
         el.panelTitle.textContent='步驟2：27件貨品拖放分類';
         typeText('請把 27 件貨品全部拖放到正確類別貨架。');
         el.hintText.textContent='分類錯誤會扣分。';
-        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待分類貨品</p><div id="pool" class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>`<div id="w-${p.uid}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-3">${CATS.map(c=>`<div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-cyan-300/40 p-2" data-cat="${c}"><p class="mb-2 text-sm font-bold text-cyan-200">${c}貨架</p><div class="space-y-1"></div></div>`).join('')}</div><button id="verify2" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查分類</button>`;
-        initDrag('[data-uid]','.drop-zone','pool');
+
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待分類貨品</p><div id="pool2" class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>`<div id="c-${p.uid}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-3">${CATS.map(c=>`<div class="drop-zone shelf-bg min-h-[220px] rounded-xl border-2 border-dashed border-cyan-300/40 p-2" data-cat="${c}"><p class="mb-2 text-sm font-bold text-cyan-200">${c}貨架</p><div class="space-y-1"></div></div>`).join('')}</div><button id="verify2" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查分類</button>`;
+        initDrag('[data-uid]','.drop-zone','pool2');
+
         document.getElementById('verify2').onclick=()=>{
           const count=document.querySelectorAll('.drop-zone [data-uid]').length;
           if(count!==state.activeBatch.length){ el.hintText.textContent='仍有貨品未分類。'; return; }
-          let ok=true; document.querySelectorAll('.drop-zone').forEach(z=>z.querySelectorAll('[data-uid]').forEach(c=>{ if(byUid(c.dataset.uid).category!==z.dataset.cat) ok=false; }));
+          let ok=true;
+          document.querySelectorAll('.drop-zone').forEach(z=>z.querySelectorAll('[data-uid]').forEach(c=>{ if(byUid(c.dataset.uid).category!==z.dataset.cat) ok=false; }));
           if(ok){ el.hintText.textContent='✅ 全部分類正確。'; el.nextBtn.classList.remove('hidden'); }
           else { updateScore(state.score-10); el.hintText.textContent=`❌ 分類有誤。分數：${state.score}`; }
         };
@@ -164,61 +196,95 @@
 
       function setupStage3(){
         state.stage=3; updateHeader(); el.nextBtn.classList.add('hidden');
-        el.panelTitle.textContent='步驟3：27件外觀可上架判斷';
-        typeText('請把 27 件貨品拖到「可上架 / 不可上架」貨架。');
-        el.hintText.textContent='外觀受損（凹陷、漏液、破洞）不可上架。';
-        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待外觀審核貨品</p><div id="pool3" class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>`<div id="a-${p.uid}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-2"><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-emerald-300/40 p-2" data-judge="allow"><p class="font-bold text-emerald-300">可上架貨架</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-rose-300/40 p-2" data-judge="deny"><p class="font-bold text-rose-300">不可上架貨架</p><div class="space-y-1"></div></div></div><button id="verify3" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查外觀判斷</button>`;
+        el.panelTitle.textContent='步驟3：合併判斷（可上架 / 已損壞 / 已過期）';
+        typeText('請將全部 27 件貨品拖到：可上架貨架、貨品已損壞、貨品已過期。');
+        el.hintText.textContent='預設每批約 5 件損壞 + 5 件過期。';
+
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待判斷貨品</p><div id="pool3" class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>`<div id="j-${p.uid}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-3"><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-emerald-300/40 p-2" data-judge="shelf"><p class="font-bold text-emerald-300">可上架貨架</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-rose-300/40 p-2" data-judge="damaged"><p class="font-bold text-rose-300">貨品已損壞</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-amber-300/40 p-2" data-judge="expired"><p class="font-bold text-amber-300">貨品已過期</p><div class="space-y-1"></div></div></div><button id="verify3" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查合併分類</button>`;
+
         initDrag('[data-uid]','.drop-zone','pool3');
+
         document.getElementById('verify3').onclick=()=>{
           const count=document.querySelectorAll('.drop-zone [data-uid]').length;
-          if(count!==state.activeBatch.length){ el.hintText.textContent='請完成所有貨品外觀判斷。'; return; }
+          if(count!==state.activeBatch.length){ el.hintText.textContent='請完成全部 27 件分類。'; return; }
+
           let ok=true;
-          document.querySelectorAll('[data-judge="allow"] [data-uid]').forEach(c=>{ if(byUid(c.dataset.uid).isDamaged) ok=false; });
-          document.querySelectorAll('[data-judge="deny"] [data-uid]').forEach(c=>{ if(!byUid(c.dataset.uid).isDamaged) ok=false; });
-          if(ok){ el.hintText.textContent='✅ 外觀判斷全對。'; el.nextBtn.classList.remove('hidden'); }
-          else { updateScore(state.score-10); el.hintText.textContent=`❌ 外觀判斷有誤。分數：${state.score}`; }
+          const shelf=[];
+          document.querySelectorAll('[data-judge="shelf"] [data-uid]').forEach(c=>{
+            const p=byUid(c.dataset.uid);
+            if(p.isDamaged || isExpired(p)) ok=false;
+            else shelf.push(p);
+          });
+          document.querySelectorAll('[data-judge="damaged"] [data-uid]').forEach(c=>{ if(!byUid(c.dataset.uid).isDamaged) ok=false; });
+          document.querySelectorAll('[data-judge="expired"] [data-uid]').forEach(c=>{ const p=byUid(c.dataset.uid); if(p.isDamaged || !isExpired(p)) ok=false; });
+
+          if(ok){
+            state.sortableItems = shelf;
+            el.hintText.textContent = `✅ 合併分類正確。可上架貨品共 ${shelf.length} 件，進入日期排序。`;
+            el.nextBtn.classList.remove('hidden');
+          } else {
+            updateScore(state.score-10);
+            el.hintText.textContent = `❌ 合併分類有誤（損壞與過期需分開）。分數：${state.score}`;
+          }
         };
       }
 
       function setupStage4(){
-        state.stage=4; updateHeader(); el.nextBtn.classList.add('hidden');
-        el.panelTitle.textContent='步驟4：27件有效日期判斷';
-        typeText('請把 27 件貨品拖到「有效期內 / 已過期」貨架。');
-        el.hintText.textContent='以 2026-03-09 為準比較有效日期。';
-        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待效期判斷貨品</p><div id="pool4" class="grid gap-2 md:grid-cols-3">${state.activeBatch.map(p=>`<div id="e-${p.uid}">${cardHTML(p,{draggable:true}).replace(/<button[\s\S]*?<\/button>/,'')}</div>`).join('')}</div></div><div class="grid gap-3 md:grid-cols-2"><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-emerald-300/40 p-2" data-exp="valid"><p class="font-bold text-emerald-300">有效期內貨架</p><div class="space-y-1"></div></div><div class="drop-zone shelf-bg min-h-[260px] rounded-xl border-2 border-dashed border-rose-300/40 p-2" data-exp="expired"><p class="font-bold text-rose-300">已過期貨架</p><div class="space-y-1"></div></div></div><button id="verify4" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查效期判斷</button>`;
-        initDrag('[data-uid]','.drop-zone','pool4');
-        document.getElementById('verify4').onclick=()=>{
-          const count=document.querySelectorAll('.drop-zone [data-uid]').length;
-          if(count!==state.activeBatch.length){ el.hintText.textContent='請完成所有貨品效期判斷。'; return; }
-          let ok=true;
-          document.querySelectorAll('[data-exp="valid"] [data-uid]').forEach(c=>{ if(isExpired(byUid(c.dataset.uid))) ok=false; });
-          document.querySelectorAll('[data-exp="expired"] [data-uid]').forEach(c=>{ if(!isExpired(byUid(c.dataset.uid))) ok=false; });
-          if(ok){ el.hintText.textContent='✅ 效期判斷全對。'; el.nextBtn.classList.remove('hidden'); }
-          else { updateScore(state.score-10); el.hintText.textContent=`❌ 效期判斷有誤。分數：${state.score}`; }
-        };
+        state.stage=4; updateHeader();
+        state.sortCategoryIndex = 0;
+        el.panelTitle.textContent='步驟4：按類別分頁日期排序';
+        typeText('先做「罐頭食品」頁面，再到「飲品類」，最後「乾貨」。把貨品拖到正確名稱並按日期由早到晚排序。');
+        el.nextBtn.classList.add('hidden');
+        renderSortPage();
       }
 
-      function setupStage5(){
-        state.stage=5; updateHeader(); el.nextBtn.classList.add('hidden'); el.restartBtn.classList.add('hidden');
-        const qualified = state.activeBatch.filter(p=>!p.isDamaged && !isExpired(p));
-        const grouped = Object.fromEntries(CATS.map(c=>[c, qualified.filter(p=>p.category===c)]));
-        el.panelTitle.textContent='步驟5：FIFO 貨架排序（本批可上架貨品）';
-        typeText('把可上架且有效貨品按分類拖到貨架，並按到期日由前到後排序。');
-        el.hintText.textContent='每個分類都要排序完成。';
-        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">待上架貨品（可上架＋有效）</p><div id="pool5" class="grid gap-2 md:grid-cols-3">${qualified.map(p=>cardHTML(p,{draggable:true,dataKey:'data-fid'}).replace(/<button[\s\S]*?<\/button>/,'')).join('')}</div></div>${CATS.map(cat=>`<div class="shelf-bg rounded-xl border border-slate-500 p-3"><p class="mb-2 text-sm font-bold text-cyan-200">${cat}貨架（前→後）</p><div class="grid gap-2 md:grid-cols-${Math.max(2,grouped[cat].length)}">${grouped[cat].map((_,idx)=>`<div class="fifo-slot min-h-[96px] rounded-lg border-2 border-dashed border-cyan-300/50 p-1" data-cat="${cat}"><p class="text-[11px] text-slate-300">${idx===0?'前排':idx===grouped[cat].length-1?'後排':'中排'}</p></div>`).join('')}</div></div>`).join('')}<button id="verify5" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查 FIFO 排序</button>`;
+      function renderSortPage(){
+        const cat = CATS[state.sortCategoryIndex];
+        const items = state.sortableItems.filter(p=>p.category===cat);
+        const names = [...new Set(items.map(p=>p.name))];
+        el.hintText.textContent = `排序頁面 ${state.sortCategoryIndex+1}/3：${cat}。請把貨品拖到對應名稱格仔，並按日期由早到晚。`;
 
-        initDrag('[data-fid]','.fifo-slot','pool5', true);
-        document.getElementById('verify5').onclick=()=>{
+        el.interactionArea.innerHTML = `<div class="shelf-bg rounded-xl border border-amber-700/40 p-3"><p class="mb-2 text-sm">${cat} - 待排序貨品</p><div id="sortPool" class="grid gap-2 md:grid-cols-3">${items.map(p=>cardHTML(p,{draggable:true,dataKey:'data-fid'}).replace(/<button[\s\S]*?<\/button>/,'')).join('')}</div></div>${names.map(name=>{
+          const nameItems = items.filter(i=>i.name===name);
+          return `<div class="shelf-bg rounded-xl border border-slate-500 p-3"><p class="mb-2 text-sm font-bold text-cyan-200">${name}（由早到晚）</p><div class="grid gap-2 md:grid-cols-${Math.max(2,nameItems.length)}">${nameItems.map(()=>`<div class="name-slot min-h-[96px] rounded-lg border-2 border-dashed border-cyan-300/50 p-1" data-name="${name}"></div>`).join('')}</div></div>`;
+        }).join('')}<div class="flex gap-2"><button id="verifySort" class="rounded-lg bg-cyan-500 px-4 py-2 font-bold text-slate-900">檢查此類別排序</button><button id="nextCat" class="hidden rounded-lg bg-emerald-500 px-4 py-2 font-bold text-slate-900">下一個類別</button></div>`;
+
+        initDrag('[data-fid]','.name-slot','sortPool', true);
+
+        document.getElementById('verifySort').onclick=()=>{
           let ok=true;
-          CATS.forEach(cat=>{
-            const slots=[...document.querySelectorAll(`.fifo-slot[data-cat="${cat}"]`)];
-            if(!slots.length) return;
-            const dates=slots.map(s=>s.querySelector('[data-fid]')?.querySelector('p.text-[11px]')?.textContent?.replace('有效日期：','').trim()||null);
-            if(dates.includes(null)) ok=false;
-            const sorted=[...dates].sort(); if(!dates.every((d,i)=>d===sorted[i])) ok=false;
+          names.forEach((name)=>{
+            const slots=[...document.querySelectorAll(`.name-slot[data-name="${name}"]`)];
+            const filled=slots.map(s=>s.querySelector('[data-fid]')?.dataset.fid || null);
+            if(filled.includes(null)) ok=false;
+            const itemsPlaced=filled.map(uid=>state.sortableItems.find(x=>x.uid===uid));
+            if(itemsPlaced.some(x=>x.name!==name)) ok=false;
+            const dates=itemsPlaced.map(x=>x.expiry);
+            const sorted=[...dates].sort();
+            if(!dates.every((d,i)=>d===sorted[i])) ok=false;
           });
-          if(ok){ el.hintText.textContent='🏆 完成！本批 27 件貨品流程已完成。'; el.restartBtn.classList.remove('hidden'); }
-          else { updateScore(state.score-10); el.hintText.textContent=`❌ FIFO 排序未完成或順序錯誤。分數：${state.score}`; }
+
+          if(ok){
+            document.getElementById('nextCat').classList.remove('hidden');
+            el.hintText.textContent = `✅ ${cat} 類別排序正確。`;
+            if(state.sortCategoryIndex===CATS.length-1){
+              document.getElementById('nextCat').textContent='完成訓練';
+            }
+          } else {
+            updateScore(state.score-10);
+            el.hintText.textContent = `❌ ${cat} 類別名稱或日期排序有誤。分數：${state.score}`;
+          }
+        };
+
+        document.getElementById('nextCat').onclick=()=>{
+          if(state.sortCategoryIndex < CATS.length-1){
+            state.sortCategoryIndex += 1;
+            renderSortPage();
+          } else {
+            el.hintText.textContent = '🏆 完成！你已完成本批貨品的全流程操作。';
+            el.restartBtn.classList.remove('hidden');
+            document.getElementById('nextCat').classList.add('hidden');
+          }
         };
       }
 
@@ -235,16 +301,22 @@
             e.preventDefault(); zone.classList.remove('drop-ok');
             if(!dragging) return;
             if(singleSlot){
-              const exist = zone.querySelector(cardSel); if(exist) document.getElementById(poolId).appendChild(exist);
+              const exist = zone.querySelector(cardSel);
+              if(exist) document.getElementById(poolId).appendChild(exist);
               zone.appendChild(dragging);
             } else {
-              zone.querySelector('div').appendChild(dragging.closest('[id^="w-"]') || dragging.closest('[id^="a-"]') || dragging.closest('[id^="e-"]'));
+              zone.querySelector('div').appendChild(dragging.closest('[id^="c-"]') || dragging.closest('[id^="j-"]'));
             }
           });
         });
       }
 
-      function nextStage(){ if(state.stage===1) return setupStage2(); if(state.stage===2) return setupStage3(); if(state.stage===3) return setupStage4(); if(state.stage===4) return setupStage5(); }
+      function nextStage(){
+        if(state.stage===1) return setupStage2();
+        if(state.stage===2) return setupStage3();
+        if(state.stage===3) return setupStage4();
+      }
+
       function reset(){ updateScore(100); generateBatches(); setupIntro(); }
 
       el.nextBtn.addEventListener('click', nextStage);
