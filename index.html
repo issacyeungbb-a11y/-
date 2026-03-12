@@ -11,10 +11,14 @@
       .typing::after { content:"▋"; animation: blink .8s infinite; }
       @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
       .product-card.dragging { opacity:.5; transform: scale(.98); }
+ codex/start-o2o-training-system-simulation-xesbmc
       .product-card.touch-selected { outline: 2px solid rgba(34,197,94,.95); box-shadow: 0 0 0 2px rgba(34,197,94,.35); }
       .drop-ok { box-shadow: 0 0 0 2px rgba(16,185,129,.85) inset; }
       .drop-target-tap { box-shadow: 0 0 0 3px rgba(14,165,233,.65) inset; }
       .product-card { touch-action: none; }
+
+      .drop-ok { box-shadow: 0 0 0 2px rgba(16,185,129,.85) inset; }
+ main
       .shelf-bg {
         background:
           linear-gradient(to bottom, transparent 0 36px, rgba(120,53,15,.95) 36px 44px, transparent 44px 108px, rgba(120,53,15,.95) 108px 116px, transparent 116px 180px, rgba(120,53,15,.95) 180px 188px, transparent 188px),
@@ -292,6 +296,7 @@
       }
 
       function initDrag(cardSel, zoneSel, poolId, singleSlot=false){
+codex/start-o2o-training-system-simulation-xesbmc
         const supportsTouch = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
         let dragging=null;
         let tapSelectedCard=null;
@@ -339,11 +344,20 @@
             });
           }
 
+
+        let dragging=null;
+        document.querySelectorAll(cardSel).forEach(card=>{
+          card.addEventListener('dragstart',()=>{ dragging=card; card.classList.add('dragging'); });
+          card.addEventListener('dragend',()=> card.classList.remove('dragging'));
+        });
+        document.querySelectorAll(zoneSel).forEach(zone=>{
+ main
           zone.addEventListener('dragover',(e)=>{ e.preventDefault(); zone.classList.add('drop-ok'); });
           zone.addEventListener('dragleave',()=> zone.classList.remove('drop-ok'));
           zone.addEventListener('drop',(e)=>{
             e.preventDefault(); zone.classList.remove('drop-ok');
             if(!dragging) return;
+ codex/start-o2o-training-system-simulation-xesbmc
             placeCardToZone(dragging, zone);
           });
         });
@@ -351,6 +365,17 @@
         if(supportsTouch){
           el.hintText.textContent += '（平板模式：先點選貨品，再點目的貨架放置）';
         }
+
+            if(singleSlot){
+              const exist = zone.querySelector(cardSel);
+              if(exist) document.getElementById(poolId).appendChild(exist);
+              zone.appendChild(dragging);
+            } else {
+              zone.querySelector('div').appendChild(dragging.closest('[id^="c-"]') || dragging.closest('[id^="j-"]'));
+            }
+          });
+        });
+main
       }
 
       function nextStage(){
