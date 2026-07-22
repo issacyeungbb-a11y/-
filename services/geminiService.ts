@@ -2,82 +2,45 @@ import { GoogleGenAI } from "@google/genai";
 
 const getClient = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("API_KEY is missing");
-    return null;
-  }
+  if (!apiKey) return null;
   return new GoogleGenAI({ apiKey });
 };
 
-export const getExplanation = async (a: number, b: number): Promise<string> => {
+export const getMonsterTaunt = async (monsterName: string): Promise<string> => {
   const client = getClient();
-  if (!client) return "請檢查 API Key 設定。";
-
+  if (!client) return `${monsterName}咆哮著向你衝來！`;
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Explain the multiplication of ${a} x ${b} to a 7-year-old child who is struggling with it. 
-      Use a fun, visual metaphor (like grouping candies, apples, or toys).
-      Keep it short (under 40 words).
-      Reply in Traditional Chinese (Cantonese colloquial style preferred).
-      Start with "試下咁諗："`,
+      model: 'gemini-2.5-flash',
+      contents: `你係一隻名叫「${monsterName}」嘅遊戲怪獸，正在挑釁一位數學勇者。
+      用廣東話口語寫一句短短嘅（20字內）嘲諷台詞。
+      語氣要威嚇但有趣。只輸出台詞，唔好加引號或其他格式。`,
     });
-    return response.text || "試下用手指數下？";
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "小老師暫時休息緊，試下自己畫圖？";
+    return response.text?.trim() || `${monsterName}咆哮著向你衝來！`;
+  } catch {
+    return `${monsterName}咆哮著向你衝來！`;
   }
 };
 
-export const getEncouragement = async (streak: number): Promise<string> => {
+export const getMathHint = async (question: string, wrongCount: number): Promise<string> => {
   const client = getClient();
-  if (!client) return "做得好！";
-
+  if (!client) return getLocalHint(question);
   try {
     const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Give a very short, high-energy encouragement message for a child who just got a streak of ${streak} correct answers in a math game.
-      Space adventure theme.
-      Reply in Traditional Chinese.`,
+      model: 'gemini-2.5-flash',
+      contents: `學生答唔到數學題：「${question}」，已經答錯${wrongCount}次。
+      用廣東話口語、小學生明白嘅方法，30字內給一個具體計算提示。
+      唔好直接說答案。只輸出提示文字。`,
     });
-    return response.text || "太厲害喇！";
-  } catch (error) {
-    return "太厲害喇！";
+    return response.text?.trim() || getLocalHint(question);
+  } catch {
+    return getLocalHint(question);
   }
 };
 
-export const getWordProblem = async (difficulty: string): Promise<{ question: string; a: number; b: number }> => {
-  const client = getClient();
-  // Fallback defaults if API fails
-  const fallback = { question: "有 3 隻貓，每隻貓有 4 條腿，總共有幾多條腿？", a: 3, b: 4 };
-
-  if (!client) return fallback;
-
-  let range = "1 to 9";
-  if (difficulty === 'EASY') range = "1 to 5";
-  if (difficulty === 'HARD') range = "2 to 12";
-
-  try {
-    const response = await client.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Generate a simple multiplication word problem for a child.
-      Pick two random numbers (Factors A and B) between ${range}.
-      The story should be about space, aliens, or cute animals.
-      Output ONLY a JSON object: { "question": "The question text in Traditional Chinese", "a": number, "b": number }.
-      Do not add markdown formatting like \`\`\`json.`,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text?.trim();
-    if (!text) return fallback;
-    
-    // Simple sanitization in case markdown slips in
-    const cleanJson = text.replace(/```json|```/g, '');
-    return JSON.parse(cleanJson);
-  } catch (error) {
-    console.error("Gemini Word Problem Error:", error);
-    return fallback;
-  }
-};
+function getLocalHint(question: string): string {
+  if (question.includes('×')) return '試下用手指數，或者一組一組咁加！';
+  if (question.includes('+')) return '由大個數開始，再加細個數！';
+  if (question.includes('-')) return '先數到大個數，再減返去細個數！';
+  return '慢慢計，唔使急！';
+}

@@ -1,30 +1,51 @@
-export enum AppMode {
-  LOGIN = 'LOGIN', // New login screen
-  MENU = 'MENU',
-  DRILL_SELECT = 'DRILL_SELECT', // Select which number (1-9) to practice
-  DRILL_PLAY = 'DRILL_PLAY', // Sequential practice (e.g. 2x1, 2x2...)
-  GRID_CHALLENGE = 'GRID_CHALLENGE', // Full table filling
-  BOSS = 'BOSS', // Word problem by AI (Deprecated/Replaced by 3D Vertical)
-  VERTICAL_SELECT = 'VERTICAL_SELECT', // Select difficulty for vertical math
-  VERTICAL_PLAY = 'VERTICAL_PLAY', // The actual vertical game (2D x 1D)
-  VERTICAL_3D_PLAY = 'VERTICAL_3D_PLAY', // 3D x 1D Vertical game
-}
+export type Zone = 'forest' | 'castle' | 'volcano';
+export type GamePhase = 'map' | 'battle' | 'victory' | 'gameover';
+export type Operation = '+' | '-' | '×';
 
-export interface Problem {
-  factorA: number;
-  factorB: number;
+export interface Question {
+  a: number;
+  b: number;
+  operation: Operation;
   answer: number;
+  display: string;
 }
 
-export enum Difficulty {
-  EASY = 'EASY',
-  MEDIUM = 'MEDIUM',
-  HARD = 'HARD',
-}
-
-export interface Student {
-  id: number;
-  classInfo: string;
+export interface Monster {
+  id: string;
   name: string;
-  group: 1 | 2 | 3;
+  emoji: string;
+  hp: number;
+  maxHp: number;
+  description: string;
+  zone: Zone;
+}
+
+export interface Player {
+  hp: number;
+  maxHp: number;
+  xp: number;
+  level: number;
+}
+
+export interface ZoneInfo {
+  id: Zone;
+  name: string;
+  emoji: string;
+  gradient: string;
+  border: string;
+  description: string;
+  label: string;
+}
+
+export interface GameState {
+  phase: GamePhase;
+  zone: Zone | null;
+  player: Player;
+  monster: Monster | null;
+  currentQuestion: Question | null;
+  monstersDefeated: number;
+  totalMonstersInZone: number;
+  wrongStreak: number;
+  lastAnswerCorrect: boolean | null;
+  clearedZones: Set<Zone>;
 }
